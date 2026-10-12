@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
-import { authApi } from '@/services/api';
+import { authApi, twoFaApi } from '@/services/api';
 import { User } from '@/types';
 
 // SecureStore n'est pas disponible sur web — wrapper sécurisé
@@ -23,7 +23,8 @@ interface AuthState {
   error:      string | null;
   serverDown: boolean;
 
-  login:      (email: string, password: string) => Promise<void>;
+  login:      (email: string, password: string) => Promise<{ requires2fa: boolean; userId?: number }>;
+  completeTwoFaLogin: (userId: number, otp: string) => Promise<void>;
   register:   (formData: FormData) => Promise<void>;
   logout:     () => Promise<void>;
   loadUser:   () => Promise<void>;
@@ -66,8 +67,13 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ loading: true, error: null });
     try {
       const { data } = await authApi.login(email, password);
+      if (data.requires_2fa) {
+        set({ loading: false });
+        return { requires2fa: true, userId: data.user_id };
+      }
       await storage.set('auth_token', data.token);
       set({ user: data.user, token: data.token, loading: false });
+      return { requires2fa: false };
     } catch (err: any) {
       let message: string;
       if (err.response) {
@@ -79,6 +85,19 @@ export const useAuthStore = create<AuthState>((set) => ({
       } else {
         message = err.message || 'Erreur inconnue';
       }
+      set({ loading: false, error: message });
+      throw err;
+    }
+  },
+
+  completeTwoFaLogin: async (userId, otp) => {
+    set({ loading: true, error: null });
+    try {
+      const { data } = await twoFaApi.verifyLogin(userId, otp);
+      await storage.set('auth_token', data.token);
+      set({ user: data.user, token: data.token, loading: false });
+    } catch (err: any) {
+      const message = err.response?.data?.message ?? 'Code invalide';
       set({ loading: false, error: message });
       throw err;
     }

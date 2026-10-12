@@ -168,6 +168,10 @@ export default function TabsLayout() {
       <Tabs.Screen name="services"      options={{ href: null, title: t('tabs.services'),      headerLeft: HeaderBackButton }} />
       <Tabs.Screen name="clients"       options={{ href: null, title: t('tabs.topClients'),    headerLeft: HeaderBackButton }} />
       <Tabs.Screen name="pointage"      options={{ href: null, title: t('tabs.pointage'),      headerLeft: HeaderBackButton }} />
+      <Tabs.Screen name="two-factor"    options={{ href: null, title: t('twoFa.screenTitle'),  headerLeft: HeaderBackButton }} />
+      <Tabs.Screen name="pools"         options={{ href: null, title: t('tabs.pools'),         headerLeft: HeaderBackButton }} />
+      <Tabs.Screen name="orders"        options={{ href: null, title: t('tabs.orders'),        headerLeft: HeaderBackButton }} />
+      <Tabs.Screen name="payout-info"   options={{ href: null, title: t('payoutInfo.screenTitle'), headerLeft: HeaderBackButton }} />
     </Tabs>
   );
 }

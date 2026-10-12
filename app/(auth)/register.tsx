@@ -1,14 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView, Alert, Image, ActivityIndicator,
 } from 'react-native';
-import { Link, router } from 'expo-router';
+import { Link, router, useLocalSearchParams } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/store/authStore';
+import { subscriptionApi } from '@/services/api';
+import { SubscriptionPlan } from '@/types';
 import { COLORS } from '@/constants';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 
@@ -25,16 +27,27 @@ export default function RegisterScreen() {
   const { register, loading, error, clearError } = useAuthStore();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const params = useLocalSearchParams<{ role?: string; plan?: string }>();
 
   const [name,          setName]          = useState('');
   const [email,         setEmail]         = useState('');
   const [password,      setPassword]      = useState('');
   const [confirm,       setConfirm]       = useState('');
-  const [role,          setRole]          = useState<Role>('client');
+  const [role,          setRole]          = useState<Role>(params.role === 'prestataire' ? 'prestataire' : 'client');
   const [proof,         setProof]         = useState<ProofFile | null>(null);
   const [showPassword,  setShowPassword]  = useState(false);
   const [showConfirm,   setShowConfirm]   = useState(false);
   const [pickingFile,   setPickingFile]   = useState(false);
+  const [plans,         setPlans]         = useState<SubscriptionPlan[]>([]);
+  const [plan,          setPlan]          = useState<string | null>(null);
+
+  useEffect(() => {
+    subscriptionApi.plans().then((res) => {
+      setPlans(res.data);
+      const preselect = res.data.find((p: SubscriptionPlan) => p.slug === params.plan);
+      setPlan((preselect ?? res.data[0])?.slug ?? null);
+    }).catch(() => {});
+  }, []);
 
   const pickDocument = async () => {
     setPickingFile(true);
@@ -76,6 +89,10 @@ export default function RegisterScreen() {
       Alert.alert(t('auth.docRequired'), t('auth.docRequiredMsg'));
       return;
     }
+    if (role === 'prestataire' && !plan) {
+      Alert.alert(t('common.error'), t('auth.planRequiredMsg'));
+      return;
+    }
 
     const formData = new FormData();
     formData.append('name',                  name);
@@ -83,6 +100,7 @@ export default function RegisterScreen() {
     formData.append('password',              password);
     formData.append('password_confirmation', confirm);
     formData.append('role',                  role);
+    if (role === 'prestataire' && plan) formData.append('plan', plan);
 
     if (role === 'prestataire' && proof) {
       formData.append('proof_document', {
@@ -226,6 +244,30 @@ export default function RegisterScreen() {
             </TouchableOpacity>
           </View>
 
+          {/* ── Palier d'abonnement (propriétaire seulement) ── */}
+          {role === 'prestataire' && plans.length > 0 && (
+            <>
+              <Text style={styles.label}>
+                <FontAwesome5 name="layer-group" size={12} color={COLORS.dark} />{'  '}{t('auth.planLabel')}
+              </Text>
+              <View style={styles.planRow}>
+                {plans.map((p) => (
+                  <TouchableOpacity
+                    key={p.slug}
+                    style={[styles.planCard, plan === p.slug && styles.planCardActive]}
+                    onPress={() => setPlan(p.slug)}
+                  >
+                    <Text style={[styles.planName, plan === p.slug && styles.planNameActive]}>{p.name}</Text>
+                    <Text style={[styles.planPrice, plan === p.slug && styles.planNameActive]}>
+                      {p.price_monthly.toLocaleString()}
+                    </Text>
+                    <Text style={styles.planPriceUnit}>FCFA/{t('auth.planMonth')}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </>
+          )}
+
           {/* ── Document justificatif (propriétaire seulement) ── */}
           {role === 'prestataire' && (
             <View style={styles.proofSection}>
@@ -329,6 +371,13 @@ const styles = StyleSheet.create({
   inputWrap:       { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: COLORS.border, borderRadius: 10, backgroundColor: COLORS.background },
   inputInner:      { flex: 1, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: COLORS.text },
   eyeBtn:          { paddingHorizontal: 12 },
+  planRow:         { flexDirection: 'row', gap: 8 },
+  planCard:        { flex: 1, borderWidth: 2, borderColor: COLORS.border, borderRadius: 12, paddingVertical: 12, alignItems: 'center', backgroundColor: COLORS.background },
+  planCardActive:  { borderColor: COLORS.primary, backgroundColor: '#EEF2FF' },
+  planName:        { fontSize: 12, fontWeight: '700', color: COLORS.dark },
+  planNameActive:  { color: COLORS.primary },
+  planPrice:       { fontSize: 15, fontWeight: '800', color: COLORS.dark, marginTop: 4 },
+  planPriceUnit:   { fontSize: 9, color: COLORS.textMuted, marginTop: 1 },
   proofSection:    { marginTop: 16, borderWidth: 1.5, borderColor: '#DBEAFE', borderRadius: 12, padding: 14, backgroundColor: '#F0F7FF' },
   proofHeader:     { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
   proofTitle:      { fontSize: 14, fontWeight: '700', color: COLORS.primary },

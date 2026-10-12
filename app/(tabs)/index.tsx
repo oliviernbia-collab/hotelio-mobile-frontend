@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, RefreshControl, TouchableOpacity,
-  Modal, Image, Dimensions,
+  Modal, Image, Dimensions, Alert, Linking,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { LANGUAGES, changeLanguage, LangCode } from '@/i18n';
-import { dashboardApi, roomApi, notificationApi } from '@/services/api';
+import { dashboardApi, roomApi, notificationApi, subscriptionApi } from '@/services/api';
 import { useAuthStore } from '@/store/authStore';
 import { COLORS } from '@/constants';
 import { FontAwesome5 } from '@expo/vector-icons';
-import { Room } from '@/types';
+import { Room, Subscription, SubscriptionPlan } from '@/types';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const MENU_W = Math.min(300, SCREEN_W * 0.82);
@@ -44,6 +44,69 @@ export default function DashboardScreen() {
   const [menuOpen,       setMenuOpen]       = useState(false);
   const [availableRooms, setAvailableRooms] = useState<Room[]>([]);
   const [unreadNotifs,   setUnreadNotifs]   = useState(0);
+  const [subscription,   setSubscription]   = useState<Subscription | null>(null);
+  const [plans,          setPlans]          = useState<SubscriptionPlan[]>([]);
+
+  const fetchSubscription = async () => {
+    if (user?.role !== 'prestataire') return;
+    try {
+      const res = await subscriptionApi.mine();
+      setSubscription(res.data);
+      if (!res.data) {
+        const plansRes = await subscriptionApi.plans();
+        setPlans(plansRes.data);
+      }
+    } catch {}
+  };
+
+  const handleChoosePlan = () => {
+    Alert.alert(
+      t('subscriptionBanner.chooseTitle'),
+      t('subscriptionBanner.chooseDesc'),
+      [
+        ...plans.map((p) => ({
+          text: `${p.name} — ${p.price_monthly.toLocaleString()} FCFA`,
+          onPress: async () => {
+            try {
+              await subscriptionApi.choose(p.slug);
+              fetchSubscription();
+            } catch (e: any) {
+              Alert.alert(t('common.error'), e.response?.data?.message ?? t('common.error'));
+            }
+          },
+        })),
+        { text: t('common.cancel'), style: 'cancel' },
+      ]
+    );
+  };
+
+  const handlePaySubscription = () => {
+    const methods: { label: string; value: string }[] = [
+      { label: 'Orange Money', value: 'Orange Money' },
+      { label: 'MTN Mobile Money', value: 'MTN Mobile Money' },
+      { label: 'Wave', value: 'Wave' },
+      { label: 'Moov Money', value: 'Moov Money' },
+      { label: 'Djamo (carte prépayée)', value: 'DJAMO' },
+    ];
+    Alert.alert(
+      t('subscriptionBanner.payTitle'),
+      t('subscriptionBanner.payChooseMethod'),
+      [
+        ...methods.map((m) => ({
+          text: m.label,
+          onPress: async () => {
+            try {
+              const res = await subscriptionApi.pay(m.value);
+              await Linking.openURL(res.data.redirectUrl);
+            } catch (e: any) {
+              Alert.alert(t('common.error'), e.response?.data?.message ?? t('subscriptionBanner.payError'));
+            }
+          },
+        })),
+        { text: t('common.cancel'), style: 'cancel' },
+      ]
+    );
+  };
 
   const fetchRooms = async () => {
     if (user?.role !== 'employe') return;
@@ -76,11 +139,12 @@ export default function DashboardScreen() {
     fetchData();
     fetchRooms();
     fetchUnread();
+    fetchSubscription();
   }, []);
 
   const onRefresh = () => {
     setRefreshing(true);
-    Promise.all([fetchData(), fetchRooms(), fetchUnread()]);
+    Promise.all([fetchData(), fetchRooms(), fetchUnread(), fetchSubscription()]);
   };
 
   const buildStats = (): Stat[] => {
@@ -191,6 +255,52 @@ export default function DashboardScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Bandeau abonnement (prestataire) */}
+        {user?.role === 'prestataire' && (
+          <TouchableOpacity
+            style={[
+              styles.subBanner,
+              { backgroundColor: subscription?.status === 'active' ? '#ECFDF5' : subscription?.status === 'past_due' ? '#FEF2F2' : '#FFF7ED' },
+            ]}
+            onPress={() => router.push('/(tabs)/profile')}
+          >
+            <FontAwesome5
+              name="credit-card"
+              size={16}
+              color={subscription?.status === 'active' ? '#059669' : subscription?.status === 'past_due' ? COLORS.danger : '#C2410C'}
+            />
+            <View style={{ flex: 1, marginLeft: 10 }}>
+              <Text style={styles.subBannerTitle}>
+                {subscription
+                  ? `${t('subscriptionBanner.plan', { name: subscription.plan_name ?? '—' })} · ${
+                      subscription.status === 'active'
+                        ? t('subscriptionBanner.active')
+                        : subscription.status === 'past_due'
+                          ? t('subscriptionBanner.pastDue')
+                          : t('subscriptionBanner.pending')
+                    }`
+                  : t('subscriptionBanner.none')}
+              </Text>
+              {subscription?.current_period_end && (
+                <Text style={styles.subBannerSub}>
+                  {t('subscriptionBanner.dueDate', { date: subscription.current_period_end })}
+                </Text>
+              )}
+            </View>
+            {!subscription ? (
+              <TouchableOpacity style={styles.subBannerPayBtn} onPress={handleChoosePlan}>
+                <Text style={styles.subBannerPayBtnText}>{t('subscriptionBanner.chooseButton')}</Text>
+              </TouchableOpacity>
+            ) : subscription.status !== 'active' ? (
+              <TouchableOpacity style={styles.subBannerPayBtn} onPress={handlePaySubscription}>
+                <Text style={styles.subBannerPayBtnText}>{t('subscriptionBanner.payButton')}</Text>
+              </TouchableOpacity>
+            ) : (
+              <FontAwesome5 name="chevron-right" size={12} color={COLORS.textMuted} />
+            )}
+          </TouchableOpacity>
+        )}
 
         {/* Stats */}
         <View style={styles.statsGrid}>
@@ -485,6 +595,13 @@ const styles = StyleSheet.create({
   menuBtn:        { width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
   notifBadge:     { position: 'absolute', top: -4, right: -4, backgroundColor: COLORS.danger, borderRadius: 8, minWidth: 16, height: 16, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 3 },
   notifBadgeText: { color: COLORS.white, fontSize: 9, fontWeight: '800' },
+
+  /* Bandeau abonnement */
+  subBanner:      { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginBottom: 16, padding: 14, borderRadius: 14 },
+  subBannerTitle: { fontSize: 13, fontWeight: '700', color: COLORS.dark },
+  subBannerSub:   { fontSize: 11, color: COLORS.textMuted, marginTop: 2 },
+  subBannerPayBtn:    { backgroundColor: COLORS.primary, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 },
+  subBannerPayBtnText:{ color: COLORS.white, fontSize: 11, fontWeight: '700' },
 
   /* Stats */
   statsGrid:      { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 8 },

@@ -8,6 +8,9 @@ export interface User {
   hotels?: string;
   two_fa: boolean;
   avatar?: string;
+  payout_method?: 'wave' | 'orange_money' | 'mtn' | 'moov' | 'djamo' | 'bank' | null;
+  payout_identifier?: Record<string, string> | null;
+  jeko_contact_id?: string | null;
 }
 
 export interface Hotel {
@@ -203,7 +206,11 @@ export interface Review {
   rating: number;
   title?: string;
   comment?: string;
+  status?: 'pending' | 'approved' | 'rejected';
   user?: Partial<User>;
+  user_name?: string;
+  hotel_name?: string;
+  hotel_short_name?: string;
   created_at?: string;
 }
 
@@ -231,6 +238,42 @@ export interface Notification {
 export interface DashboardStats {
   role: string;
   stats: Record<string, number>;
+}
+
+export interface SubscriptionPlan {
+  id: number;
+  slug: 'starter' | 'business' | 'premium';
+  name: string;
+  price_monthly: number;
+  commission_rate: number;
+  max_hotels: number | null;
+  features: string[];
+}
+
+export interface Subscription {
+  id: number;
+  user_id: number;
+  subscription_plan_id: number;
+  status: 'pending_payment' | 'active' | 'past_due' | 'cancelled';
+  started_at: string | null;
+  current_period_end: string | null;
+  plan_slug?: string;
+  plan_name?: string;
+  price_monthly?: number;
+  commission_rate?: number;
+  max_hotels?: number | null;
+  user_name?: string;
+  user_email?: string;
+}
+
+export interface PayoutBalance {
+  id: number;
+  name: string;
+  email: string;
+  owed: number;
+  already_paid: number;
+  balance: number;
+  last_payout_at: string | null;
 }
 
 export interface PaginatedResponse<T> {

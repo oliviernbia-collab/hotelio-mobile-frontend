@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Image,
+  View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Image, TextInput,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -37,13 +37,42 @@ export default function HotelDetailScreen() {
   const { t } = useTranslation();
   const [hotel,   setHotel]   = useState<Hotel & { rooms: Room[]; reviews: Review[] } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [reviewRating,  setReviewRating]  = useState(5);
+  const [reviewTitle,   setReviewTitle]   = useState('');
+  const [reviewComment, setReviewComment] = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
 
-  useEffect(() => {
+  const fetchHotel = () => {
     hotelApi.get(Number(id))
       .then((res) => setHotel(res.data))
       .catch(() => Alert.alert(t('common.error'), t('hotels.notFound')))
       .finally(() => setLoading(false));
-  }, [id]);
+  };
+
+  useEffect(() => { fetchHotel(); }, [id]);
+
+  const handleSubmitReview = async () => {
+    if (!reviewComment.trim() || reviewComment.trim().length < 10) {
+      Alert.alert(t('common.error'), t('reviews.commentTooShort'));
+      return;
+    }
+    setSubmittingReview(true);
+    try {
+      await hotelApi.reviews.create(Number(id), {
+        rating: reviewRating,
+        title: reviewTitle.trim() || undefined,
+        comment: reviewComment.trim(),
+      });
+      setReviewTitle('');
+      setReviewComment('');
+      setReviewRating(5);
+      Alert.alert(t('common.success'), t('reviews.submitSuccess'));
+    } catch (e: any) {
+      Alert.alert(t('common.error'), e.response?.data?.message ?? t('reviews.submitError'));
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -129,6 +158,50 @@ export default function HotelDetailScreen() {
         </View>
       )}
 
+      {/* Laisser un avis (client) */}
+      {user?.role === 'client' && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>{t('reviews.writeTitle')}</Text>
+          <View style={styles.starPicker}>
+            {[1, 2, 3, 4, 5].map((n) => (
+              <TouchableOpacity key={n} onPress={() => setReviewRating(n)}>
+                <FontAwesome5
+                  name="star"
+                  size={26}
+                  color={n <= reviewRating ? COLORS.secondary : COLORS.grayLight}
+                  solid={n <= reviewRating}
+                  style={{ marginRight: 6 }}
+                />
+              </TouchableOpacity>
+            ))}
+          </View>
+          <TextInput
+            style={styles.reviewInput}
+            value={reviewTitle}
+            onChangeText={setReviewTitle}
+            placeholder={t('reviews.titleLabel')}
+            placeholderTextColor={COLORS.grayLight}
+          />
+          <TextInput
+            style={[styles.reviewInput, { minHeight: 80, textAlignVertical: 'top' }]}
+            value={reviewComment}
+            onChangeText={setReviewComment}
+            placeholder={t('reviews.commentLabel')}
+            placeholderTextColor={COLORS.grayLight}
+            multiline
+          />
+          <TouchableOpacity
+            style={[styles.reviewSubmitBtn, submittingReview && { opacity: 0.6 }]}
+            onPress={handleSubmitReview}
+            disabled={submittingReview}
+          >
+            {submittingReview
+              ? <ActivityIndicator color={COLORS.white} />
+              : <Text style={styles.reviewSubmitText}>{t('reviews.submit')}</Text>}
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* CTA Réserver */}
       {user?.role === 'client' && (
         <TouchableOpacity
@@ -182,6 +255,10 @@ const styles = StyleSheet.create({
   reviewRating:    { fontSize: 13 },
   reviewTitle:     { fontWeight: '600', color: COLORS.dark, marginBottom: 4 },
   reviewComment:   { fontSize: 13, color: COLORS.textMuted, lineHeight: 20 },
+  starPicker:      { flexDirection: 'row', marginBottom: 12 },
+  reviewInput:     { borderWidth: 1, borderColor: COLORS.border, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 11, fontSize: 14, color: COLORS.text, backgroundColor: COLORS.background, marginBottom: 10 },
+  reviewSubmitBtn: { backgroundColor: COLORS.primary, borderRadius: 10, paddingVertical: 13, alignItems: 'center', marginTop: 2 },
+  reviewSubmitText:{ color: COLORS.white, fontSize: 14, fontWeight: '700' },
   bookBtn:         { backgroundColor: COLORS.secondary, margin: 16, borderRadius: 12, paddingVertical: 16, alignItems: 'center' },
   bookBtnText:     { color: COLORS.white, fontSize: 17, fontWeight: '700' },
 });

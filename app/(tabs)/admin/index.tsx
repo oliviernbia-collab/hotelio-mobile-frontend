@@ -20,6 +20,41 @@ const SECTIONS = [
     titleKey: 'admin.logs',
     descKey: 'admin.logsDesc',
   },
+  {
+    icon: 'star',
+    color: '#f59e0b',
+    route: '/(tabs)/admin/reviews' as const,
+    titleKey: 'admin.reviews',
+    descKey: 'admin.reviewsDesc',
+  },
+  {
+    icon: 'chart-bar',
+    color: '#10b981',
+    route: '/(tabs)/admin/reports' as const,
+    titleKey: 'admin.reports',
+    descKey: 'admin.reportsDesc',
+  },
+  {
+    icon: 'cog',
+    color: '#6366f1',
+    route: '/(tabs)/admin/settings' as const,
+    titleKey: 'admin.settings',
+    descKey: 'admin.settingsDesc',
+  },
+  {
+    icon: 'credit-card',
+    color: '#0ea5e9',
+    route: '/(tabs)/admin/subscriptions' as const,
+    titleKey: 'admin.subscriptions',
+    descKey: 'admin.subscriptionsDesc',
+  },
+  {
+    icon: 'hand-holding-usd',
+    color: '#10b981',
+    route: '/(tabs)/admin/payouts' as const,
+    titleKey: 'admin.payouts',
+    descKey: 'admin.payoutsDesc',
+  },
 ];
 
 export default function AdminHomeScreen() {

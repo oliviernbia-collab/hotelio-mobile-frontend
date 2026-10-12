@@ -25,8 +25,12 @@ export default function LoginScreen() {
       return;
     }
     try {
-      await login(email, password);
-      router.replace('/(tabs)');
+      const result = await login(email, password);
+      if (result.requires2fa && result.userId) {
+        router.push({ pathname: '/(auth)/verify-2fa', params: { userId: String(result.userId) } });
+      } else {
+        router.replace('/(tabs)');
+      }
     } catch {}
   };
 
@@ -100,6 +104,10 @@ export default function LoginScreen() {
           <View style={styles.registerRow}>
             <Text style={styles.registerText}>{t('auth.noAccount')} </Text>
             <Link href="/(auth)/register" style={styles.registerLink}>{t('auth.registerLink')}</Link>
+          </View>
+
+          <View style={styles.registerRow}>
+            <Link href="/(auth)/pricing" style={styles.registerLink}>{t('pricing.seeLink')}</Link>
           </View>
         </View>
       </ScrollView>

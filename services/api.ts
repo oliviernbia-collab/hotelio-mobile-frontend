@@ -45,6 +45,14 @@ export const authApi = {
   forgotPassword: (email: string) => api.post('/auth/forgot-password', { email }),
 };
 
+// ─── 2FA ─────────────────────────────────────────────────────────────────────
+export const twoFaApi = {
+  setup:       () => api.get('/auth/2fa/setup'),
+  enable:      (otp: string) => api.post('/auth/2fa/enable', { otp }),
+  disable:     (password: string) => api.post('/auth/2fa/disable', { password }),
+  verifyLogin: (user_id: number, otp: string) => api.post('/auth/2fa/verify', { user_id, otp }),
+};
+
 // ─── Profil ──────────────────────────────────────────────────────────────────
 export const profileApi = {
   get:            () => api.get('/profile'),
@@ -53,6 +61,7 @@ export const profileApi = {
   uploadAvatar:   (formData: FormData) => api.post('/profile/avatar', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
+  updatePayout:   (data: object) => api.put('/profile/payout', data),
 };
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
@@ -148,6 +157,7 @@ export const poolApi = {
   list:   (params?: object) => api.get('/pools', { params }),
   create: (data: object) => api.post('/pools', data),
   update: (id: number, data: object) => api.put(`/pools/${id}`, data),
+  delete: (id: number) => api.delete(`/pools/${id}`),
 };
 
 // ─── Tickets ─────────────────────────────────────────────────────────────────
@@ -218,6 +228,14 @@ export const pointageApi = {
   report:   (params?: object) => api.get('/pointage/report', { params }),
 };
 
+// ─── Abonnements ─────────────────────────────────────────────────────────────
+export const subscriptionApi = {
+  plans:  () => api.get('/subscriptions/plans'),
+  mine:   () => api.get('/subscriptions/mine'),
+  pay:    (payment_method: string) => api.post('/subscriptions/pay', { payment_method }),
+  choose: (plan: string) => api.post('/subscriptions/choose', { plan }),
+};
+
 // ─── Admin ───────────────────────────────────────────────────────────────────
 export const adminApi = {
   users: {
@@ -231,7 +249,26 @@ export const adminApi = {
     clear: () => api.delete('/admin/logs'),
   },
   reviews: {
+    list:    (params?: object) => api.get('/admin/reviews', { params }),
     approve: (id: number) => api.patch(`/admin/reviews/${id}/approve`),
     reject:  (id: number) => api.patch(`/admin/reviews/${id}/reject`),
   },
+  subscriptions: {
+    list:          (params?: object) => api.get('/admin/subscriptions', { params }),
+    recordPayment: (id: number, data?: object) => api.post(`/admin/subscriptions/${id}/payment`, data ?? {}),
+  },
+  payouts: {
+    list:   () => api.get('/admin/payouts'),
+    record: (userId: number, data: { amount: number; notes?: string }) => api.post(`/admin/payouts/${userId}`, data),
+  },
+};
+
+// ─── Reports (admin) ─────────────────────────────────────────────────────────
+export const reportApi = {
+  get: (params?: object) => api.get('/admin/reports', { params }),
+};
+
+// ─── Settings (admin, lecture seule) ─────────────────────────────────────────
+export const settingsApi = {
+  get: () => api.get('/admin/settings'),
 };

@@ -146,12 +146,15 @@ export default function ProfileScreen() {
     ] : []),
     ...(user?.role === 'prestataire' ? [
       { icon: 'crown',       label: t('profile.nav_topClients'),  onPress: () => router.push('/(tabs)/clients' as any) },
+      { icon: 'hand-holding-usd', label: t('profile.nav_payoutInfo'), onPress: () => router.push('/(tabs)/payout-info' as any) },
     ] : []),
     ...(user?.role !== 'client' ? [
       { icon: 'clock',       label: t('profile.nav_pointage'),   onPress: () => router.push('/(tabs)/pointage' as any) },
       { icon: 'ticket-alt',  label: t('profile.nav_tickets'),    onPress: () => router.push('/(tabs)/tickets' as any) },
       { icon: 'dollar-sign', label: t('profile.nav_billing'),    onPress: () => router.push('/(tabs)/facturations' as any) },
       { icon: 'chart-line',  label: t('profile.nav_expenses'),   onPress: () => router.push('/(tabs)/expenses' as any) },
+      { icon: 'water',       label: t('profile.nav_pools'),      onPress: () => router.push('/(tabs)/pools' as any) },
+      { icon: 'receipt',     label: t('profile.nav_orders_staff'), onPress: () => router.push('/(tabs)/orders' as any) },
     ] : [
       { icon: 'calendar-check', label: t('profile.nav_reservations'), onPress: () => router.push('/(tabs)/reservations' as any) },
       { icon: 'heart',          label: t('profile.nav_favorites'),    onPress: () => router.push('/(tabs)/favorites' as any) },
@@ -218,7 +221,13 @@ export default function ProfileScreen() {
             <InfoRow label={t('profile.name')}  value={user?.name ?? ''} />
             <InfoRow label={t('auth.email')}     value={user?.email ?? ''} />
             <InfoRow label={t('profile.role')}   value={t(ROLE_KEYS[user?.role ?? 'client'] ?? 'roles.client')} />
-            <InfoRow label={t('profile.twoFA')}  value={user?.two_fa ? t('profile.twoFA_on') : t('profile.twoFA_off')} />
+            <TouchableOpacity style={styles.twoFaRow} onPress={() => router.push('/(tabs)/two-factor' as any)}>
+              <Text style={styles.twoFaLabel}>{t('profile.twoFA')}</Text>
+              <View style={styles.twoFaValueWrap}>
+                <Text style={styles.twoFaValue}>{user?.two_fa ? t('profile.twoFA_on') : t('profile.twoFA_off')}</Text>
+                <FontAwesome5 name="chevron-right" size={12} color={COLORS.grayLight} />
+              </View>
+            </TouchableOpacity>
           </>
         )}
       </View>
@@ -460,6 +469,10 @@ const styles = StyleSheet.create({
   sectionTitle:  { fontSize: 16, fontWeight: '700', color: COLORS.dark },
   label:         { fontSize: 13, color: COLORS.textMuted, marginTop: 10, marginBottom: 4 },
   input:         { borderWidth: 1, borderColor: COLORS.border, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15, color: COLORS.text, backgroundColor: COLORS.background },
+  twoFaRow:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  twoFaLabel:     { flex: 1, color: COLORS.textMuted, fontSize: 14 },
+  twoFaValueWrap: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  twoFaValue:     { color: COLORS.dark, fontSize: 14, fontWeight: '500' },
   saveBtn:       { backgroundColor: COLORS.primary, borderRadius: 10, paddingVertical: 12, alignItems: 'center', marginTop: 16 },
   saveBtnText:   { color: COLORS.white, fontSize: 15, fontWeight: '700' },
 
