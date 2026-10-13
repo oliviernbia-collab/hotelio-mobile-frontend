@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import {
   View, Text, FlatList, Image, StyleSheet, TouchableOpacity,
   Alert, RefreshControl, ScrollView, ActivityIndicator, Modal,
-  KeyboardAvoidingView, Platform, TextInput,
+  KeyboardAvoidingView, Platform, TextInput, Linking,
 } from 'react-native';
 import { router, Stack } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
@@ -188,10 +188,23 @@ export default function BoutiqueScreen() {
       for (const [id, qty] of Object.entries(cart)) {
         await boutiqueApi.addToCart(Number(id), qty);
       }
-      await boutiqueApi.placeOrder(selectedPayment);
+      const res = await boutiqueApi.placeOrder(selectedPayment);
       setCart({});
       closeCart();
       fetchProducts(); // rafraîchir les stocks
+
+      if (res.data?.paid === false && res.data?.redirectUrl) {
+        // Orange Money / MTN / Moov / Wave : paiement réel via Jèko, pas de confirmation
+        // immédiate — on ouvre la page de paiement, la confirmation arrive ensuite par
+        // webhook (même mécanisme que le paiement d'une réservation).
+        Linking.openURL(res.data.redirectUrl);
+        Alert.alert(t('boutique.paymentPending'), t('boutique.paymentPendingMsg'), [
+          { text: t('dashboard.action_orders'), onPress: () => router.push('/(tabs)/boutique/my-orders') },
+          { text: t('common.ok') },
+        ]);
+        return;
+      }
+
       Alert.alert(t('common.success'), t('boutique.orderPlaced'), [
         { text: t('dashboard.action_orders'), onPress: () => router.push('/(tabs)/boutique/my-orders') },
         { text: t('common.ok') },

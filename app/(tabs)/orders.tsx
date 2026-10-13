@@ -10,6 +10,7 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { useAuthStore } from '@/store/authStore';
 import { useTranslation } from 'react-i18next';
 import { Order, MenuItem, Hotel } from '@/types';
+import DateRangeFilter from '@/components/DateRangeFilter';
 
 const STATUSES = ['en préparation', 'prêt', 'livré', 'annulé'];
 
@@ -38,6 +39,8 @@ export default function OrdersScreen() {
   const [hotels,     setHotels]     = useState<Hotel[]>([]);
   const [myHotelId,  setMyHotelId]  = useState<number | null>(null);
   const [filter,     setFilter]     = useState('');
+  const [dateFrom,   setDateFrom]   = useState('');
+  const [dateTo,     setDateTo]     = useState('');
   const [loading,    setLoading]    = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [busyId,     setBusyId]     = useState<number | null>(null);
@@ -61,11 +64,15 @@ export default function OrdersScreen() {
 
   const load = useCallback(async () => {
     try {
-      const res = await orderApi.list(filter ? { status: filter } : undefined);
+      const params: Record<string, string> = {};
+      if (filter)   params.status = filter;
+      if (dateFrom) params.from   = dateFrom;
+      if (dateTo)   params.to     = dateTo;
+      const res = await orderApi.list(Object.keys(params).length ? params : undefined);
       setOrders(Array.isArray(res.data) ? res.data : (res.data?.data ?? []));
     } catch (e) { console.error(e); }
     finally { setLoading(false); setRefreshing(false); }
-  }, [filter]);
+  }, [filter, dateFrom, dateTo]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -154,6 +161,12 @@ export default function OrdersScreen() {
           </TouchableOpacity>
         ))}
       </ScrollView>
+
+      <DateRangeFilter
+        from={dateFrom}
+        to={dateTo}
+        onChange={(f, tDate) => { setDateFrom(f); setDateTo(tDate); }}
+      />
 
       <FlatList
         data={orders}

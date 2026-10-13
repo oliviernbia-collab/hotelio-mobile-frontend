@@ -172,6 +172,8 @@ export default function TabsLayout() {
       <Tabs.Screen name="pools"         options={{ href: null, title: t('tabs.pools'),         headerLeft: HeaderBackButton }} />
       <Tabs.Screen name="orders"        options={{ href: null, title: t('tabs.orders'),        headerLeft: HeaderBackButton }} />
       <Tabs.Screen name="payout-info"   options={{ href: null, title: t('payoutInfo.screenTitle'), headerLeft: HeaderBackButton }} />
+      <Tabs.Screen name="loyalty"       options={{ href: null, title: t('profile.myLoyalty'), headerLeft: HeaderBackButton }} />
+      <Tabs.Screen name="personal-info" options={{ href: null, title: t('profile.personalInfo'), headerLeft: HeaderBackButton }} />
     </Tabs>
   );
 }

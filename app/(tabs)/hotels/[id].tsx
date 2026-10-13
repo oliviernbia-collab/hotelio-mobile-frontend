@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Image, TextInput,
 } from 'react-native';
-import { useLocalSearchParams, router } from 'expo-router';
+import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { hotelApi } from '@/services/api';
 import { Hotel, Room, Review } from '@/types';
@@ -76,16 +76,21 @@ export default function HotelDetailScreen() {
 
   if (loading) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-      </View>
+      <>
+        <Stack.Screen options={{ title: '' }} />
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
+      </>
     );
   }
 
   if (!hotel) return null;
 
   return (
-    <ScrollView style={styles.container}>
+    <>
+      <Stack.Screen options={{ title: hotel.name }} />
+      <ScrollView style={styles.container}>
       {/* Hero */}
       {hotel.image_url ? (
         <Image source={{ uri: hotel.image_url }} style={styles.heroImage} resizeMode="cover" />
@@ -127,6 +132,13 @@ export default function HotelDetailScreen() {
           <Text style={styles.sectionTitle}>{t('hotels.rooms')}</Text>
           {hotel.rooms.map((room) => (
             <View key={room.id} style={styles.roomCard}>
+              {room.image_url ? (
+                <Image source={{ uri: room.image_url }} style={styles.roomThumb} resizeMode="cover" />
+              ) : (
+                <View style={[styles.roomThumb, styles.roomThumbPlaceholder]}>
+                  <FontAwesome5 name="bed" size={16} color={COLORS.grayLight} />
+                </View>
+              )}
               <View style={{ flex: 1 }}>
                 <Text style={styles.roomName}>{t('common.room')} {room.number} · {t(DETAIL_ROOM_TYPE_KEYS[room.type] ?? room.type)}</Text>
                 <Text style={styles.roomInfo}>{t('common.floor')} {room.floor} · {room.capacity} {t('common.person')} · {room.price?.toLocaleString()} {t('createRes.fcfaPerNight')}</Text>
@@ -213,7 +225,8 @@ export default function HotelDetailScreen() {
       )}
 
       <View style={{ height: 24 }} />
-    </ScrollView>
+      </ScrollView>
+    </>
   );
 }
 
@@ -244,7 +257,9 @@ const styles = StyleSheet.create({
   tagsRow:         { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   tag:             { backgroundColor: COLORS.background, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5 },
   tagText:         { fontSize: 12, color: COLORS.primary, fontWeight: '600' },
-  roomCard:        { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  roomCard:        { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  roomThumb:       { width: 48, height: 48, borderRadius: 10, flexShrink: 0 },
+  roomThumbPlaceholder: { backgroundColor: COLORS.background, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: COLORS.border },
   roomName:        { fontSize: 14, fontWeight: '600', color: COLORS.dark },
   roomInfo:        { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
   roomStatus:      { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },

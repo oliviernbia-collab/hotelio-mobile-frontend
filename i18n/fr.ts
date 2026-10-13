@@ -33,6 +33,13 @@ const fr = {
     all:         'Tous',
   },
 
+  // ── Filtre par date (historiques) ─────────────────────────────
+  dateFilter: {
+    from:  'Du',
+    to:    'Au',
+    clear: 'Effacer',
+  },
+
   // ── Authentification ─────────────────────────────────────────
   auth: {
     loginTitle:        'Connectez-vous à votre espace',
@@ -363,10 +370,6 @@ const fr = {
     nextLevel:        'Encore {{count}} pts pour atteindre {{name}} {{icon}}',
     maxLevel:         'Palier maximum atteint ! 🎉',
     allTiers:         'Tous les paliers',
-    myReservations:   'Mes réservations',
-    noReservations:   'Aucune réservation',
-    seeAll:           'Voir tout',
-    seeAllRes:        'Voir toutes mes réservations',
 
     // Navigation
     nav_notifications: 'Notifications',
@@ -424,6 +427,12 @@ const fr = {
     notesLabel:     'Note (optionnel)',
     notesPlaceholder: 'Ex : Virement Orange Money',
     invalidAmount:  'Montant invalide.',
+    filter_tous:         'Tous',
+    filter_reservations: 'Réservations',
+    filter_achats:       'Achats',
+    reservations:   'Réservations',
+    purchases:      'Achats',
+    autoPending:    'En attente du virement automatique',
   },
 
   // ── Tarifs (vitrine) ──────────────────────────────────────────
@@ -883,6 +892,8 @@ const fr = {
     viewDetail:      'Voir le détail',
     orderPlaced:     'Votre commande a été passée avec succès.',
     orderError:      'Erreur lors de la commande.',
+    paymentPending:  'Paiement en cours',
+    paymentPendingMsg: 'Terminez le paiement dans la page qui vient de s\'ouvrir. Votre commande sera confirmée automatiquement une fois le paiement reçu.',
     imageMax10:      'Choisissez une image de moins de 10 Mo.',
     nameAndPriceRequired: 'Nom et prix sont obligatoires.',
     ourProducts:     'Nos produits',

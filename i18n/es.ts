@@ -32,6 +32,12 @@ const es = {
     all:         'Todos',
   },
 
+  dateFilter: {
+    from:  'Desde',
+    to:    'Hasta',
+    clear: 'Borrar',
+  },
+
   auth: {
     loginTitle:        'Inicia sesión en tu espacio',
     loginBtn:          'Iniciar sesión',
@@ -345,10 +351,6 @@ const es = {
     nextLevel:        '{{count}} pts más para alcanzar {{name}} {{icon}}',
     maxLevel:         '¡Nivel máximo alcanzado! 🎉',
     allTiers:         'Todos los niveles',
-    myReservations:   'Mis reservas',
-    noReservations:   'Sin reservas',
-    seeAll:           'Ver todo',
-    seeAllRes:        'Ver todas mis reservas',
 
     nav_notifications: 'Notificaciones',
     nav_users:         'Gestión de usuarios',
@@ -402,6 +404,12 @@ const es = {
     notesLabel:     'Nota (opcional)',
     notesPlaceholder: 'Ej.: Transferencia Orange Money',
     invalidAmount:  'Monto inválido.',
+    filter_tous:         'Todos',
+    filter_reservations: 'Reservas',
+    filter_achats:       'Compras',
+    reservations:   'Reservas',
+    purchases:      'Compras',
+    autoPending:    'Esperando la transferencia automática',
   },
 
   pricing: {
@@ -839,6 +847,8 @@ const es = {
     viewDetail:      'Ver detalle',
     orderPlaced:     'Tu pedido se ha realizado con éxito.',
     orderError:      'Error al procesar el pedido.',
+    paymentPending:  'Pago en curso',
+    paymentPendingMsg: 'Completa el pago en la página que se acaba de abrir. Tu pedido se confirmará automáticamente al recibir el pago.',
     imageMax10:      'Elige una imagen de menos de 10 MB.',
     nameAndPriceRequired: 'Nombre y precio son obligatorios.',
     ourProducts:     'Nuestros productos',

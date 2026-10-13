@@ -46,6 +46,9 @@ export default function DashboardScreen() {
   const [unreadNotifs,   setUnreadNotifs]   = useState(0);
   const [subscription,   setSubscription]   = useState<Subscription | null>(null);
   const [plans,          setPlans]          = useState<SubscriptionPlan[]>([]);
+  const [planModalOpen,  setPlanModalOpen]  = useState(false);
+  const [payModalOpen,   setPayModalOpen]   = useState(false);
+  const [payLoading,     setPayLoading]     = useState(false);
 
   const fetchSubscription = async () => {
     if (user?.role !== 'prestataire') return;
@@ -59,53 +62,42 @@ export default function DashboardScreen() {
     } catch {}
   };
 
-  const handleChoosePlan = () => {
-    Alert.alert(
-      t('subscriptionBanner.chooseTitle'),
-      t('subscriptionBanner.chooseDesc'),
-      [
-        ...plans.map((p) => ({
-          text: `${p.name} — ${p.price_monthly.toLocaleString()} FCFA`,
-          onPress: async () => {
-            try {
-              await subscriptionApi.choose(p.slug);
-              fetchSubscription();
-            } catch (e: any) {
-              Alert.alert(t('common.error'), e.response?.data?.message ?? t('common.error'));
-            }
-          },
-        })),
-        { text: t('common.cancel'), style: 'cancel' },
-      ]
-    );
+  // Alert.alert ne supporte que 3 boutons max sur Android : au-delà, les options
+  // en trop (dont "Annuler") sont silencieusement coupées. On utilise donc des
+  // modales dédiées, avec une vraie croix de fermeture, pour ces deux choix.
+  const handleChoosePlan = () => setPlanModalOpen(true);
+
+  const selectPlan = async (p: SubscriptionPlan) => {
+    setPlanModalOpen(false);
+    try {
+      await subscriptionApi.choose(p.slug);
+      fetchSubscription();
+    } catch (e: any) {
+      Alert.alert(t('common.error'), e.response?.data?.message ?? t('common.error'));
+    }
   };
 
-  const handlePaySubscription = () => {
-    const methods: { label: string; value: string }[] = [
-      { label: 'Orange Money', value: 'Orange Money' },
-      { label: 'MTN Mobile Money', value: 'MTN Mobile Money' },
-      { label: 'Wave', value: 'Wave' },
-      { label: 'Moov Money', value: 'Moov Money' },
-      { label: 'Djamo (carte prépayée)', value: 'DJAMO' },
-    ];
-    Alert.alert(
-      t('subscriptionBanner.payTitle'),
-      t('subscriptionBanner.payChooseMethod'),
-      [
-        ...methods.map((m) => ({
-          text: m.label,
-          onPress: async () => {
-            try {
-              const res = await subscriptionApi.pay(m.value);
-              await Linking.openURL(res.data.redirectUrl);
-            } catch (e: any) {
-              Alert.alert(t('common.error'), e.response?.data?.message ?? t('subscriptionBanner.payError'));
-            }
-          },
-        })),
-        { text: t('common.cancel'), style: 'cancel' },
-      ]
-    );
+  const SUB_PAYMENT_METHODS: { label: string; value: string }[] = [
+    { label: 'Orange Money', value: 'Orange Money' },
+    { label: 'MTN Mobile Money', value: 'MTN Mobile Money' },
+    { label: 'Wave', value: 'Wave' },
+    { label: 'Moov Money', value: 'Moov Money' },
+    { label: 'Djamo (carte prépayée)', value: 'DJAMO' },
+  ];
+
+  const handlePaySubscription = () => setPayModalOpen(true);
+
+  const selectPaymentMethod = async (value: string) => {
+    setPayLoading(true);
+    try {
+      const res = await subscriptionApi.pay(value);
+      setPayModalOpen(false);
+      await Linking.openURL(res.data.redirectUrl);
+    } catch (e: any) {
+      Alert.alert(t('common.error'), e.response?.data?.message ?? t('subscriptionBanner.payError'));
+    } finally {
+      setPayLoading(false);
+    }
   };
 
   const fetchRooms = async () => {
@@ -562,6 +554,64 @@ export default function DashboardScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Choix du palier d'abonnement */}
+      <Modal visible={planModalOpen} transparent animationType="fade" onRequestClose={() => setPlanModalOpen(false)}>
+        <View style={styles.pickerOverlay}>
+          <TouchableOpacity style={StyleSheet.absoluteFill} onPress={() => setPlanModalOpen(false)} />
+          <View style={styles.pickerCard}>
+            <View style={styles.pickerHeaderRow}>
+              <Text style={styles.pickerTitle}>{t('subscriptionBanner.chooseTitle')}</Text>
+              <TouchableOpacity
+                style={styles.pickerCloseBtn}
+                onPress={() => setPlanModalOpen(false)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <FontAwesome5 name="times" size={16} color={COLORS.dark} />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.pickerDesc}>{t('subscriptionBanner.chooseDesc')}</Text>
+            {plans.map((p) => (
+              <TouchableOpacity key={p.slug} style={styles.pickerOption} onPress={() => selectPlan(p)}>
+                <Text style={styles.pickerOptionText}>{p.name} — {p.price_monthly.toLocaleString()} FCFA</Text>
+                <FontAwesome5 name="chevron-right" size={12} color={COLORS.grayLight} />
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Choix du moyen de paiement pour l'abonnement */}
+      <Modal visible={payModalOpen} transparent animationType="fade" onRequestClose={() => setPayModalOpen(false)}>
+        <View style={styles.pickerOverlay}>
+          <TouchableOpacity style={StyleSheet.absoluteFill} onPress={() => !payLoading && setPayModalOpen(false)} />
+          <View style={styles.pickerCard}>
+            <View style={styles.pickerHeaderRow}>
+              <Text style={styles.pickerTitle}>{t('subscriptionBanner.payTitle')}</Text>
+              <TouchableOpacity
+                style={styles.pickerCloseBtn}
+                onPress={() => setPayModalOpen(false)}
+                disabled={payLoading}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <FontAwesome5 name="times" size={16} color={COLORS.dark} />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.pickerDesc}>{t('subscriptionBanner.payChooseMethod')}</Text>
+            {SUB_PAYMENT_METHODS.map((m) => (
+              <TouchableOpacity
+                key={m.value}
+                style={[styles.pickerOption, payLoading && { opacity: 0.5 }]}
+                onPress={() => !payLoading && selectPaymentMethod(m.value)}
+                disabled={payLoading}
+              >
+                <Text style={styles.pickerOptionText}>{m.label}</Text>
+                <FontAwesome5 name="chevron-right" size={12} color={COLORS.grayLight} />
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -652,6 +702,15 @@ const styles = StyleSheet.create({
 
   /* Menu overlay */
   menuOverlay:    { flex: 1, flexDirection: 'row', backgroundColor: 'rgba(0,0,0,0.5)' },
+
+  pickerOverlay:    { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 },
+  pickerCard:       { backgroundColor: COLORS.white, borderRadius: 16, padding: 20 },
+  pickerHeaderRow:  { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
+  pickerTitle:      { flex: 1, fontSize: 18, fontWeight: '700', color: COLORS.dark, marginRight: 12 },
+  pickerCloseBtn:   { width: 30, height: 30, borderRadius: 15, backgroundColor: COLORS.light, justifyContent: 'center', alignItems: 'center' },
+  pickerDesc:       { fontSize: 13, color: COLORS.textMuted, marginTop: 6, marginBottom: 14, lineHeight: 18 },
+  pickerOption:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, borderTopWidth: 1, borderTopColor: COLORS.light },
+  pickerOptionText: { fontSize: 14.5, color: COLORS.dark, fontWeight: '600' },
   menuPanel:      { backgroundColor: COLORS.white, height: '100%', shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 20, elevation: 20 },
 
   menuHeader:     { backgroundColor: COLORS.primary, paddingHorizontal: 24, paddingBottom: 24, paddingTop: 14, alignItems: 'center' },

@@ -10,6 +10,8 @@ import { Reservation } from '@/types';
 import { COLORS, RESERVATION_STATUS_COLORS } from '@/constants';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useAuthStore } from '@/store/authStore';
+import DateRangeFilter from '@/components/DateRangeFilter';
+import HeaderBackButton from '@/components/HeaderBackButton';
 
 const canSeePlanning = (role?: string) =>
   role === 'admin' || role === 'prestataire' || role === 'employe';
@@ -90,12 +92,17 @@ export default function ReservationsScreen() {
   const { user } = useAuthStore();
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [activeTab,    setActiveTab]    = useState('tous');
+  const [dateFrom,     setDateFrom]     = useState('');
+  const [dateTo,       setDateTo]       = useState('');
   const [loading,      setLoading]      = useState(true);
   const [refreshing,   setRefreshing]   = useState(false);
 
   const fetchData = async () => {
     try {
-      const params = activeTab !== 'tous' ? { status: activeTab } : {};
+      const params: Record<string, string> = {};
+      if (activeTab !== 'tous') params.status = activeTab;
+      if (dateFrom) params.from = dateFrom;
+      if (dateTo)   params.to   = dateTo;
       const isClient = user?.role === 'client';
       const res = isClient
         ? await reservationApi.mine(params)
@@ -109,7 +116,7 @@ export default function ReservationsScreen() {
     }
   };
 
-  useEffect(() => { fetchData(); }, [activeTab]);
+  useEffect(() => { fetchData(); }, [activeTab, dateFrom, dateTo]);
 
   const onRefresh = () => { setRefreshing(true); fetchData(); };
 
@@ -224,6 +231,7 @@ export default function ReservationsScreen() {
       <Stack.Screen
         options={{
           title: t('reservations.title'),
+          headerLeft: HeaderBackButton,
           headerRight: () =>
             canSeePlanning(user?.role) ? (
               <TouchableOpacity
@@ -266,6 +274,13 @@ export default function ReservationsScreen() {
                   </TouchableOpacity>
                 ))}
               </ScrollView>
+
+              {/* Filtre par date */}
+              <DateRangeFilter
+                from={dateFrom}
+                to={dateTo}
+                onChange={(f, tDate) => { setDateFrom(f); setDateTo(tDate); }}
+              />
             </>
           }
           ListEmptyComponent={

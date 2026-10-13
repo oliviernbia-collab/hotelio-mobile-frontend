@@ -50,6 +50,9 @@ export interface Room {
   capacity: number;
   superficie_m2?: number;
   description?: string;
+  vue?: string;
+  image?: string | null;
+  image_url?: string | null;
   hotel?: Partial<Hotel>;
 }
 
@@ -271,9 +274,12 @@ export interface PayoutBalance {
   name: string;
   email: string;
   owed: number;
+  owed_reservations: number;
+  owed_commandes: number;
   already_paid: number;
   balance: number;
   last_payout_at: string | null;
+  has_failed_payout: boolean;
 }
 
 export interface PaginatedResponse<T> {

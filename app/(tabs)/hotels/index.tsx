@@ -75,6 +75,22 @@ function today() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+// Les champs ville/commune/quartier sont saisis librement par chaque prestataire
+// (pas de liste prédéfinie) — on compare/regroupe donc en ignorant la casse et
+// les espaces superflus pour éviter que "Abidjan" et "abidjan " soient traités
+// comme deux valeurs différentes lors du filtrage.
+const normLoc = (s?: string | null) => (s ?? '').trim().toLowerCase();
+
+function dedupeLocations(values: (string | undefined | null)[]): string[] {
+  const seen = new Map<string, string>(); // clé normalisée -> libellé affiché (premier rencontré)
+  for (const v of values) {
+    if (!v || !v.trim()) continue;
+    const key = normLoc(v);
+    if (!seen.has(key)) seen.set(key, v.trim());
+  }
+  return Array.from(seen.values()).sort((a, b) => a.localeCompare(b));
+}
+
 function fmtDisplay(iso: string, monthsShort: string[]) {
   const [y, m, d] = iso.split('-');
   return `${parseInt(d)} ${monthsShort[parseInt(m) - 1]} ${y}`;
@@ -173,33 +189,31 @@ export default function HotelsScreen() {
 
   const filteredHotels = useMemo(() => {
     return scopedHotels.filter(h =>
-      (!filterCity     || h.city     === filterCity) &&
-      (!filterCommune  || h.commune  === filterCommune) &&
-      (!filterQuartier || h.quartier === filterQuartier)
+      (!filterCity     || normLoc(h.city)     === normLoc(filterCity)) &&
+      (!filterCommune  || normLoc(h.commune)  === normLoc(filterCommune)) &&
+      (!filterQuartier || normLoc(h.quartier) === normLoc(filterQuartier))
     );
   }, [scopedHotels, filterCity, filterCommune, filterQuartier]);
 
   // Options de filtre dynamiques (dérivées des hôtels chargés), en cascade Ville > Commune > Quartier
   const cityOptions = useMemo(() => (
-    Array.from(new Set(scopedHotels.map(h => h.city).filter(Boolean))).sort()
+    dedupeLocations(scopedHotels.map(h => h.city))
   ), [scopedHotels]);
 
   const communeOptions = useMemo(() => (
-    Array.from(new Set(
+    dedupeLocations(
       scopedHotels
-        .filter(h => !filterCity || h.city === filterCity)
+        .filter(h => !filterCity || normLoc(h.city) === normLoc(filterCity))
         .map(h => h.commune)
-        .filter((c): c is string => !!c)
-    )).sort()
+    )
   ), [scopedHotels, filterCity]);
 
   const quartierOptions = useMemo(() => (
-    Array.from(new Set(
+    dedupeLocations(
       scopedHotels
-        .filter(h => (!filterCity || h.city === filterCity) && (!filterCommune || h.commune === filterCommune))
+        .filter(h => (!filterCity || normLoc(h.city) === normLoc(filterCity)) && (!filterCommune || normLoc(h.commune) === normLoc(filterCommune)))
         .map(h => h.quartier)
-        .filter((q): q is string => !!q)
-    )).sort()
+    )
   ), [scopedHotels, filterCity, filterCommune]);
 
   const activeFilterCount = [filterCity, filterCommune, filterQuartier].filter(Boolean).length;

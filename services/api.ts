@@ -87,8 +87,8 @@ export const hotelApi = {
 export const roomApi = {
   list:         (params?: object) => api.get('/rooms', { params }),
   mine:         (params?: object) => api.get('/rooms/mine', { params }),
-  create:       (data: object) => api.post('/rooms', data),
-  update:       (id: number, data: object) => api.put(`/rooms/${id}`, data),
+  create:       (data: object | FormData) => api.post('/rooms', data),
+  update:       (id: number, data: object | FormData) => api.put(`/rooms/${id}`, data),
   updateStatus: (id: number, status: string) => api.patch(`/rooms/${id}/status`, { status }),
   markCleaned:  (id: number) => api.post(`/rooms/${id}/cleaned`),
   delete:       (id: number) => api.delete(`/rooms/${id}`),
@@ -205,8 +205,9 @@ export const boutiqueApi = {
   cart:           () => api.get('/boutique/cart'),
   addToCart:      (id: number, quantity?: number) => api.post(`/boutique/cart/${id}`, { quantity }),
   removeFromCart: (id: number) => api.delete(`/boutique/cart/${id}`),
-  placeOrder:     (payment_method: string) => api.post('/boutique/order', { payment_method }),
-  myOrders:       () => api.get('/boutique/my-orders'),
+  // Le serveur attend `mode_paiement` (colonne BDD), pas `payment_method`.
+  placeOrder:     (payment_method: string) => api.post('/boutique/order', { mode_paiement: payment_method }),
+  myOrders:       (params?: object) => api.get('/boutique/my-orders', { params }),
   orderItems:     (id: number) => api.get(`/boutique/orders/${id}/items`),
   cancelOrder:    (id: number) => api.patch(`/boutique/orders/${id}/cancel`),
 };
@@ -258,7 +259,7 @@ export const adminApi = {
     recordPayment: (id: number, data?: object) => api.post(`/admin/subscriptions/${id}/payment`, data ?? {}),
   },
   payouts: {
-    list:   () => api.get('/admin/payouts'),
+    list:   (params?: { type?: 'tous' | 'reservations' | 'achats' }) => api.get('/admin/payouts', { params }),
     record: (userId: number, data: { amount: number; notes?: string }) => api.post(`/admin/payouts/${userId}`, data),
   },
 };

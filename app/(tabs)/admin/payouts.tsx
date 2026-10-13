@@ -11,8 +11,12 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { PayoutBalance } from '@/types';
 
+const TYPES = ['tous', 'reservations', 'achats'] as const;
+type PayoutType = typeof TYPES[number];
+
 export default function AdminPayoutsScreen() {
   const { t } = useTranslation();
+  const [type,       setType]       = useState<PayoutType>('tous');
   const [owners,     setOwners]     = useState<PayoutBalance[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -23,11 +27,11 @@ export default function AdminPayoutsScreen() {
 
   const fetchOwners = useCallback(async () => {
     try {
-      const res = await adminApi.payouts.list();
+      const res = await adminApi.payouts.list({ type });
       setOwners(res.data);
     } catch (e) { console.error(e); }
     finally { setLoading(false); setRefreshing(false); }
-  }, []);
+  }, [type]);
 
   useEffect(() => { fetchOwners(); }, [fetchOwners]);
 
@@ -73,14 +77,21 @@ export default function AdminPayoutsScreen() {
         <Text style={styles.statText}>{t('payoutsAdmin.owed')}: {item.owed.toLocaleString()} FCFA</Text>
         <Text style={styles.statText}>{t('payoutsAdmin.alreadyPaid')}: {item.already_paid.toLocaleString()} FCFA</Text>
       </View>
+      {type === 'tous' && (
+        <Text style={styles.breakdownText}>
+          {t('payoutsAdmin.reservations')}: {item.owed_reservations.toLocaleString()} · {t('payoutsAdmin.purchases')}: {item.owed_commandes.toLocaleString()} FCFA
+        </Text>
+      )}
       {item.last_payout_at && (
         <Text style={styles.lastPayout}>{t('payoutsAdmin.lastPayout')}: {item.last_payout_at}</Text>
       )}
-      {item.balance > 0 ? (
+      {item.balance > 0 && item.has_failed_payout ? (
         <TouchableOpacity style={styles.payBtn} onPress={() => openPayoutModal(item)}>
           <FontAwesome5 name="money-check-alt" size={13} color="#065F46" />
           <Text style={styles.payBtnText}>{t('payoutsAdmin.recordPayout')}</Text>
         </TouchableOpacity>
+      ) : item.balance > 0 ? (
+        <Text style={styles.autoPending}><FontAwesome5 name="clock" size={11} /> {t('payoutsAdmin.autoPending')}</Text>
       ) : (
         <Text style={styles.upToDate}>{t('payoutsAdmin.upToDate')}</Text>
       )}
@@ -91,6 +102,19 @@ export default function AdminPayoutsScreen() {
     <>
       <Stack.Screen options={{ title: t('payoutsAdmin.screenTitle') }} />
       <View style={styles.container}>
+        <View style={styles.typeRow}>
+          {TYPES.map((v) => (
+            <TouchableOpacity
+              key={v}
+              style={[styles.typeChip, type === v && styles.typeChipActive]}
+              onPress={() => { setLoading(true); setType(v); }}
+            >
+              <Text style={[styles.typeChipText, type === v && styles.typeChipTextActive]}>
+                {t(`payoutsAdmin.filter_${v}`)}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
         {loading ? (
           <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>
         ) : (
@@ -157,6 +181,13 @@ const styles = StyleSheet.create({
   badge:       { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
   badgeText:   { fontSize: 12, fontWeight: '800' },
   statsRow:    { flexDirection: 'row', gap: 16, marginBottom: 4 },
+  breakdownText: { fontSize: 11, color: COLORS.textMuted, marginBottom: 6 },
+  typeRow:     { flexDirection: 'row', gap: 8, paddingHorizontal: 12, paddingTop: 12, paddingBottom: 4 },
+  typeChip:    { flex: 1, paddingVertical: 8, borderRadius: 20, backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.border, alignItems: 'center' },
+  typeChipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  typeChipText:   { fontSize: 12, fontWeight: '600', color: COLORS.textMuted },
+  typeChipTextActive: { color: COLORS.white },
+  autoPending: { fontSize: 12, color: '#92400E', fontWeight: '600', marginTop: 8 },
   statText:    { fontSize: 12, color: COLORS.textMuted },
   lastPayout:  { fontSize: 11, color: COLORS.textMuted, marginBottom: 10 },
   payBtn:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#D1FAE5', borderRadius: 10, paddingVertical: 8, marginTop: 8 },

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import {
   View, Text, FlatList, StyleSheet, TouchableOpacity, Alert,
-  RefreshControl, Modal, ScrollView, TextInput,
+  RefreshControl, Modal, ScrollView, TextInput, Image,
   KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native';
+import * as DocumentPicker from 'expo-document-picker';
 import { roomApi, hotelApi } from '@/services/api';
 import { Room, Hotel } from '@/types';
 import { COLORS, ROOM_STATUS_COLORS } from '@/constants';
@@ -63,6 +64,7 @@ export default function RoomsScreen() {
   const [saving,     setSaving]     = useState(false);
   const [form,       setForm]       = useState({ ...EMPTY_FORM });
   const [showTypes,  setShowTypes]  = useState(false);
+  const [roomImage,  setRoomImage]  = useState<{ uri: string; name: string; type: string } | null>(null);
 
   const loadData = async () => {
     try {
@@ -92,6 +94,7 @@ export default function RoomsScreen() {
   const openCreate = () => {
     setForm({ ...EMPTY_FORM, hotel_id: hotels[0]?.id ?? '' });
     setEditing(null);
+    setRoomImage(null);
     setShowModal(true);
   };
 
@@ -108,7 +111,23 @@ export default function RoomsScreen() {
       status:      r.status ?? 'disponible',
     });
     setEditing(r);
+    setRoomImage(null);
     setShowModal(true);
+  };
+
+  const pickRoomImage = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({ type: 'image/*' });
+      if (result.canceled) return;
+      const asset = result.assets[0];
+      if (asset.size && asset.size > 15 * 1024 * 1024) {
+        Alert.alert(t('hotels.photoTooBig'), t('boutique.imageMax10'));
+        return;
+      }
+      setRoomImage({ uri: asset.uri, name: asset.name, type: asset.mimeType ?? 'image/jpeg' });
+    } catch (e) {
+      console.error('Image picker:', e);
+    }
   };
 
   const handleSave = async () => {
@@ -116,21 +135,22 @@ export default function RoomsScreen() {
     if (!form.number.trim()) { Alert.alert(t('common.required'), t('rooms.numberRequiredMsg')); return; }
     setSaving(true);
     try {
-      const payload = {
-        hotel_id:    Number(form.hotel_id),
-        number:      form.number.trim(),
-        type:        form.type,
-        floor:       Number(form.floor) || 1,
-        capacity:    Number(form.capacity) || 1,
-        price:       form.price ? Number(form.price) : 0,
-        vue:         form.vue.trim() || undefined,
-        description: form.description.trim() || undefined,
-        status:      form.status,
-      };
+      const fd = new FormData();
+      fd.append('hotel_id',    String(Number(form.hotel_id)));
+      fd.append('number',      form.number.trim());
+      fd.append('type',        form.type);
+      fd.append('floor',       String(Number(form.floor) || 1));
+      fd.append('capacity',    String(Number(form.capacity) || 1));
+      fd.append('price',       String(form.price ? Number(form.price) : 0));
+      fd.append('vue',         form.vue.trim());
+      fd.append('description', form.description.trim());
+      fd.append('status',      form.status);
+      if (roomImage) fd.append('image', roomImage as any);
+
       if (editing) {
-        await roomApi.update(editing.id, payload);
+        await roomApi.update(editing.id, fd);
       } else {
-        await roomApi.create(payload);
+        await roomApi.create(fd);
       }
       setShowModal(false);
       loadData();
@@ -179,6 +199,13 @@ export default function RoomsScreen() {
     const color = (ROOM_STATUS_COLORS as any)[item.status] ?? COLORS.gray;
     return (
       <View style={styles.card}>
+        {item.image_url ? (
+          <Image source={{ uri: item.image_url }} style={styles.roomThumb} resizeMode="cover" />
+        ) : (
+          <View style={[styles.roomThumb, styles.roomThumbPlaceholder]}>
+            <FontAwesome5 name="bed" size={18} color={COLORS.grayLight} />
+          </View>
+        )}
         <View style={styles.cardLeft}>
           <Text style={styles.roomNumber}>{t('rooms.roomNumberLabel', { number: item.number })}</Text>
           <Text style={styles.roomMeta}>{t('rooms.floorTypeMeta', { floor: item.floor, type: t(ROOM_TYPE_KEYS[item.type ?? ''] ?? item.type) })}</Text>
@@ -403,6 +430,20 @@ export default function RoomsScreen() {
                 numberOfLines={3}
               />
 
+              <Text style={styles.label}>{t('boutique.imageLabel')}</Text>
+              <TouchableOpacity style={styles.imagePicker} onPress={pickRoomImage}>
+                {roomImage ? (
+                  <Image source={{ uri: roomImage.uri }} style={{ width: '100%', height: 120, borderRadius: 10 }} resizeMode="cover" />
+                ) : editing?.image_url ? (
+                  <Image source={{ uri: editing.image_url }} style={{ width: '100%', height: 120, borderRadius: 10 }} resizeMode="cover" />
+                ) : (
+                  <View style={{ alignItems: 'center', gap: 6 }}>
+                    <FontAwesome5 name="camera" size={24} color={COLORS.textMuted} />
+                    <Text style={{ color: COLORS.textMuted, fontSize: 13 }}>{t('boutique.chooseImage')}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+
               <TouchableOpacity
                 style={[styles.saveBtn, saving && { opacity: 0.6 }]}
                 onPress={handleSave}
@@ -450,7 +491,9 @@ const styles = StyleSheet.create({
   filterBtnActive:    { backgroundColor: COLORS.primary },
   filterText:         { fontSize: 12, color: COLORS.textMuted },
   filterTextActive:   { color: COLORS.white, fontWeight: '700' },
-  card:               { backgroundColor: COLORS.white, borderRadius: 14, padding: 14, marginBottom: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 5, elevation: 2 },
+  card:               { backgroundColor: COLORS.white, borderRadius: 14, padding: 14, marginBottom: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 5, elevation: 2, gap: 12 },
+  roomThumb:          { width: 56, height: 56, borderRadius: 10, flexShrink: 0 },
+  roomThumbPlaceholder: { backgroundColor: COLORS.background, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: COLORS.border },
   cardLeft:           { flex: 1 },
   roomNumber:         { fontSize: 16, fontWeight: '700', color: COLORS.dark },
   roomMeta:           { fontSize: 13, color: COLORS.textMuted, marginTop: 2 },
@@ -472,6 +515,7 @@ const styles = StyleSheet.create({
   chipActive:         { borderColor: COLORS.primary, backgroundColor: '#EEF2FF' },
   chipText:           { fontSize: 13, color: COLORS.textMuted },
   chipTextActive:     { color: COLORS.primary, fontWeight: '700' },
+  imagePicker:        { borderWidth: 1.5, borderColor: COLORS.border, borderRadius: 12, borderStyle: 'dashed', paddingVertical: 20, alignItems: 'center', justifyContent: 'center', marginBottom: 4, backgroundColor: COLORS.background, overflow: 'hidden' },
   saveBtn:            { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.primary, borderRadius: 12, paddingVertical: 15, marginTop: 20 },
   saveBtnText:        { color: COLORS.white, fontSize: 15, fontWeight: '700' },
   typeSheet:          { backgroundColor: COLORS.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, position: 'absolute', bottom: 0, left: 0, right: 0 },

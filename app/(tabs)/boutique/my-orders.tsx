@@ -9,6 +9,8 @@ import { boutiqueApi } from '@/services/api';
 import { COLORS, PAYMENT_METHODS } from '@/constants';
 import { FontAwesome5 } from '@expo/vector-icons';
 import PaymentMethodIcon from '@/components/PaymentMethodIcon';
+import DateRangeFilter from '@/components/DateRangeFilter';
+import HeaderBackButton from '@/components/HeaderBackButton';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
 interface Order {
@@ -67,6 +69,8 @@ export default function MyOrdersScreen() {
   const [expandedId,    setExpandedId]    = useState<number | null>(null);
   const [itemsCache,    setItemsCache]    = useState<Record<number, OrderItem[]>>({});
   const [loadingItems,  setLoadingItems]  = useState<number | null>(null);
+  const [dateFrom,      setDateFrom]      = useState('');
+  const [dateTo,        setDateTo]        = useState('');
 
   /* ── Total dépensé ────────────────────────────────────────────────────── */
   const totalSpent = orders
@@ -75,7 +79,10 @@ export default function MyOrdersScreen() {
 
   const fetchOrders = async () => {
     try {
-      const res = await boutiqueApi.myOrders();
+      const params: Record<string, string> = {};
+      if (dateFrom) params.from = dateFrom;
+      if (dateTo)   params.to   = dateTo;
+      const res = await boutiqueApi.myOrders(params);
       setOrders(Array.isArray(res.data) ? res.data : (res.data?.data ?? []));
     } catch (e) {
       console.error(e);
@@ -85,7 +92,7 @@ export default function MyOrdersScreen() {
     }
   };
 
-  useEffect(() => { fetchOrders(); }, []);
+  useEffect(() => { fetchOrders(); }, [dateFrom, dateTo]);
 
   /* ── Toggle détail articles ───────────────────────────────────────────── */
   const toggleDetail = async (orderId: number) => {
@@ -252,7 +259,7 @@ export default function MyOrdersScreen() {
   ══════════════════════════════════════════════════════════════════════════ */
   return (
     <>
-      <Stack.Screen options={{ title: t('profile.nav_orders') }} />
+      <Stack.Screen options={{ title: t('profile.nav_orders'), headerLeft: HeaderBackButton }} />
       <View style={styles.container}>
         {/* Carte récapitulatif dépenses */}
         {orders.length > 0 && (
@@ -278,6 +285,12 @@ export default function MyOrdersScreen() {
             </View>
           </View>
         )}
+
+        <DateRangeFilter
+          from={dateFrom}
+          to={dateTo}
+          onChange={(f, tDate) => { setDateFrom(f); setDateTo(tDate); }}
+        />
 
         <FlatList
           data={orders}
