@@ -31,7 +31,7 @@ export default function AdminReviewsScreen() {
       const params = filter === 'tous' ? undefined : { status: filter };
       const res = await adminApi.reviews.list(params);
       setReviews(res.data);
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error(e?.message || e); }
     finally { setLoading(false); setRefreshing(false); }
   }, [filter]);
 

@@ -113,7 +113,7 @@ export default function DashboardScreen() {
       const res = await dashboardApi.get();
       setData(res.data);
     } catch (e) {
-      console.error(e);
+      console.error(e?.message || e);
     } finally {
       setLoading(false);
       setRefreshing(false);

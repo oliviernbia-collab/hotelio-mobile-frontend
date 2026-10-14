@@ -18,7 +18,7 @@ export default function FavoritesScreen() {
       const res = await favoriteApi.list();
       setHotels(res.data);
     } catch (e) {
-      console.error(e);
+      console.error(e?.message || e);
     } finally {
       setLoading(false);
       setRefreshing(false);

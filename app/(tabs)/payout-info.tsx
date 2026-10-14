@@ -3,6 +3,7 @@ import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
   TextInput, Alert, ActivityIndicator,
 } from 'react-native';
+import * as LocalAuthentication from 'expo-local-authentication';
 import { useTranslation } from 'react-i18next';
 import { profileApi } from '@/services/api';
 import { useAuthStore } from '@/store/authStore';
@@ -19,9 +20,23 @@ const MOBILE_METHODS: { value: PayoutMethod; label: string }[] = [
   { value: 'djamo', label: 'Djamo (carte prépayée)' },
 ];
 
+/** Masque toute chaîne sauf les 4 derniers caractères, ex: "2250701234567" -> "••••••••4567". */
+function mask(value: string): string {
+  if (!value) return '';
+  const visible = value.slice(-4);
+  return '•'.repeat(Math.max(value.length - 4, 4)) + visible;
+}
+
 export default function PayoutInfoScreen() {
   const { t } = useTranslation();
   const { user, setUser } = useAuthStore();
+
+  // Verrou biométrique : ces coordonnées (RIB, mobile money) ne sont chargées/affichées
+  // qu'après authentification réussie, pour protéger un téléphone volé/déverrouillé.
+  const [unlocked, setUnlocked] = useState(false);
+  const [unlocking, setUnlocking] = useState(true);
+  const [unlockError, setUnlockError] = useState<string | null>(null);
+
   const [method,  setMethod]  = useState<PayoutMethod>('wave');
   const [phone,   setPhone]   = useState('');
   const [bankName, setBankName] = useState('');
@@ -33,8 +48,41 @@ export default function PayoutInfoScreen() {
   const [loading, setLoading] = useState(true);
   const [saving,  setSaving]  = useState(false);
   const [current, setCurrent] = useState<{ method?: string; identifier?: Record<string, string> } | null>(null);
+  const [revealed, setRevealed] = useState(false);
+
+  const tryUnlock = async () => {
+    setUnlocking(true);
+    setUnlockError(null);
+    try {
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+      if (!hasHardware || !isEnrolled) {
+        // Pas de biométrie/code dispo sur l'appareil : on laisse passer plutôt que de
+        // bloquer définitivement l'accès à une fonctionnalité légitime.
+        setUnlocked(true);
+        return;
+      }
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: t('payoutInfo.unlockPrompt'),
+        disableDeviceFallback: false,
+      });
+      if (result.success) {
+        setUnlocked(true);
+      } else {
+        setUnlockError(t('payoutInfo.unlockFailed'));
+      }
+    } catch {
+      // En cas d'erreur du module biométrique lui-même, ne pas bloquer l'utilisateur.
+      setUnlocked(true);
+    } finally {
+      setUnlocking(false);
+    }
+  };
+
+  useEffect(() => { tryUnlock(); }, []);
 
   useEffect(() => {
+    if (!unlocked) return;
     profileApi.get().then((res) => {
       const u = res.data;
       if (u.payout_method) {
@@ -52,7 +100,7 @@ export default function PayoutInfoScreen() {
         }
       }
     }).catch(() => {}).finally(() => setLoading(false));
-  }, []);
+  }, [unlocked]);
 
   const isBank = method === 'bank';
 
@@ -79,6 +127,22 @@ export default function PayoutInfoScreen() {
     }
   };
 
+  if (unlocking) {
+    return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
+  }
+
+  if (!unlocked) {
+    return (
+      <View style={styles.center}>
+        <FontAwesome5 name="lock" size={32} color={COLORS.textMuted} />
+        <Text style={styles.lockText}>{unlockError ?? t('payoutInfo.unlockFailed')}</Text>
+        <TouchableOpacity style={styles.unlockBtn} onPress={tryUnlock}>
+          <Text style={styles.saveBtnText}>{t('payoutInfo.retryUnlock')}</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   if (loading) {
     return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
   }
@@ -92,8 +156,13 @@ export default function PayoutInfoScreen() {
           <FontAwesome5 name="check-circle" size={14} color={COLORS.success} solid />
           <Text style={styles.currentText}>
             {t('payoutInfo.currentMethod')}: {current.method === 'bank' ? t('payoutInfo.bankAccount') : MOBILE_METHODS.find(m => m.value === current.method)?.label}
-            {current.identifier?.number ? ` — ${current.identifier.number}` : ''}
+            {current.identifier?.number ? ` — ${revealed ? current.identifier.number : mask(current.identifier.number)}` : ''}
           </Text>
+          {current.identifier?.number && (
+            <TouchableOpacity onPress={() => setRevealed(r => !r)}>
+              <FontAwesome5 name={revealed ? 'eye-slash' : 'eye'} size={14} color={COLORS.textMuted} />
+            </TouchableOpacity>
+          )}
         </View>
       )}
 
@@ -119,6 +188,7 @@ export default function PayoutInfoScreen() {
             onChangeText={setPhone}
             placeholder="+2250701234567"
             keyboardType="phone-pad"
+            secureTextEntry={!revealed && phone.length > 0}
           />
           {method === 'djamo' && (
             <View style={styles.hintBox}>
@@ -138,9 +208,9 @@ export default function PayoutInfoScreen() {
           <Text style={styles.label}>{t('payoutInfo.agencyCode')}</Text>
           <TextInput style={styles.input} value={agencyCode} onChangeText={setAgencyCode} />
           <Text style={styles.label}>{t('payoutInfo.accountNumber')}</Text>
-          <TextInput style={styles.input} value={accountNumber} onChangeText={setAccountNumber} />
+          <TextInput style={styles.input} value={accountNumber} onChangeText={setAccountNumber} secureTextEntry={!revealed && accountNumber.length > 0} />
           <Text style={styles.label}>{t('payoutInfo.ribKey')}</Text>
-          <TextInput style={styles.input} value={ribKey} onChangeText={setRibKey} />
+          <TextInput style={styles.input} value={ribKey} onChangeText={setRibKey} secureTextEntry={!revealed && ribKey.length > 0} />
         </>
       )}
 
@@ -153,7 +223,9 @@ export default function PayoutInfoScreen() {
 
 const styles = StyleSheet.create({
   container:   { flex: 1, backgroundColor: COLORS.background },
-  center:      { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  center:      { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, gap: 14 },
+  lockText:    { fontSize: 14, color: COLORS.textMuted, textAlign: 'center' },
+  unlockBtn:   { backgroundColor: COLORS.primary, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 24, marginTop: 8 },
   hint:        { fontSize: 13, color: COLORS.textMuted, lineHeight: 19, marginBottom: 16 },
   currentBox:  { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#D1FAE5', borderRadius: 10, padding: 12, marginBottom: 16 },
   currentText: { fontSize: 12, color: '#065F46', fontWeight: '600', flex: 1 },

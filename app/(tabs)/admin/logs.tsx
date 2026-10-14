@@ -121,7 +121,7 @@ export default function AdminLogsScreen() {
       if (from) params.from = from;
       const res = await adminApi.logs.list(params);
       setLogs(Array.isArray(res.data) ? res.data : (res.data?.data ?? []));
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error(e?.message || e); }
     finally { setLoading(false); setRefreshing(false); }
   }, [actionFilter, datePreset]);
 

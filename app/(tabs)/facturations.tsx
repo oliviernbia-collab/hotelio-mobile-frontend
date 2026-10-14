@@ -101,7 +101,7 @@ export default function FacturationsScreen() {
         setStats(payload.stats ?? {});
       }
     } catch (e) {
-      console.error(e);
+      console.error(e?.message || e);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -283,7 +283,8 @@ export default function FacturationsScreen() {
   const handleDownload = async (item: Facturation) => {
     if (!token) { Alert.alert(t('common.error'), t('facturations.sessionExpired')); return; }
     try {
-      await Linking.openURL(facturationApi.downloadUrl(item.id, token));
+      const res = await facturationApi.getDownloadToken(item.id);
+      await Linking.openURL(facturationApi.downloadUrlWithToken(item.id, res.data.token));
     } catch {
       Alert.alert(t('common.error'), t('facturations.cannotOpen'));
     }

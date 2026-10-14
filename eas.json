@@ -1,0 +1,49 @@
+{
+  "cli": {
+    "version": ">= 12.0.0",
+    "appVersionSource": "local"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "http://192.168.1.112:3001/api",
+        "EXPO_PUBLIC_STORAGE_URL": "http://192.168.1.112:3001"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "http://192.168.1.112:3001/api",
+        "EXPO_PUBLIC_STORAGE_URL": "http://192.168.1.112:3001"
+      }
+    },
+    "apk": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "// TODO": "Backend de production pas encore déployé — remplacer ces deux URLs par le vrai domaine HTTPS avant de distribuer cet APK hors du réseau local.",
+        "EXPO_PUBLIC_API_BASE_URL": "http://192.168.1.112:3001/api",
+        "EXPO_PUBLIC_STORAGE_URL": "http://192.168.1.112:3001"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "env": {
+        "// TODO": "Backend de production pas encore déployé — remplacer ces deux URLs par le vrai domaine HTTPS avant la première soumission store.",
+        "EXPO_PUBLIC_API_BASE_URL": "https://api.hotelio.ci/api",
+        "EXPO_PUBLIC_STORAGE_URL": "https://api.hotelio.ci"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "appleTeamId": "REMPLACER_PAR_TON_APPLE_TEAM_ID"
+      }
+    }
+  }
+}

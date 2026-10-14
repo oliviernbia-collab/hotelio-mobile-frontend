@@ -82,7 +82,7 @@ export default function RoomsScreen() {
         setHotels(list);
       }
     } catch (e) {
-      console.error(e);
+      console.error(e?.message || e);
     } finally {
       setLoading(false);
       setRefreshing(false);

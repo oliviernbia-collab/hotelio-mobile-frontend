@@ -98,7 +98,7 @@ export default function PlanningScreen() {
       const list: Reservation[] = res.data.data ?? res.data;
       setReservations(list);
     } catch (e) {
-      console.error(e);
+      console.error(e?.message || e);
     } finally {
       setLoading(false);
       setRefreshing(false);

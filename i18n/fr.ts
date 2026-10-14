@@ -386,6 +386,14 @@ const fr = {
     nav_pools:         'Piscines',
     nav_orders_staff:  'Commandes restaurant',
     nav_payoutInfo:    'Coordonnées de paiement',
+    nav_legal:         'Mentions légales',
+    deactivateTitle:   'Désactiver mon compte',
+    deactivateHint:    "La désactivation bloque immédiatement l'accès à votre compte (vos données sont conservées). Pour une suppression définitive, contactez confidentialite@hotelio.ci.",
+    deactivatePasswordPlaceholder: 'Votre mot de passe actuel',
+    deactivatePasswordRequired: 'Veuillez saisir votre mot de passe.',
+    deactivateConfirm: 'Confirmer la désactivation de votre compte ?',
+    deactivateBtn:     'Désactiver mon compte',
+    deactivateError:   'Impossible de désactiver le compte pour le moment.',
 
     // Langue
     language:         'Langue',
@@ -481,6 +489,28 @@ const fr = {
     ribKey:           'Clé RIB',
     saved:            'Coordonnées de paiement enregistrées.',
     saveError:        "Impossible d'enregistrer ces coordonnées pour le moment.",
+    unlockPrompt:     'Authentifiez-vous pour accéder à vos coordonnées de paiement',
+    unlockFailed:     "Authentification requise pour accéder à cette page.",
+    retryUnlock:      'Réessayer',
+  },
+
+  // ── Mentions légales ────────────────────────────────────────────
+  legal: {
+    screenTitle:   'Mentions légales',
+    helpTab:            "Centre d'aide",
+    helpIntro:          "Trouvez rapidement une réponse à vos questions sur la réservation, le paiement et votre séjour.",
+    securityTab:        'Sécurité',
+    securityIntro:      "La sécurité de vos données et de vos paiements est une priorité pour Hôtelio.",
+    cguTab:        "Conditions d'utilisation",
+    cguIntro:      'En utilisant Hôtelio, vous acceptez les conditions suivantes.',
+    privacyTab:    'Confidentialité',
+    privacyIntro:  'Cette page explique quelles données Hôtelio collecte et comment elles sont utilisées.',
+    hostResourcesTab:   'Ressources hôtes',
+    hostResourcesIntro: "Tout ce qu'il faut savoir pour bien démarrer et gérer votre établissement sur Hôtelio.",
+    forumTab:           'Forum',
+    forumIntro:         'Le forum communautaire Hôtelio est en cours de préparation.',
+    supportTab:         'Assistance hôtes',
+    supportIntro:       'Une équipe dédiée accompagne les établissements partenaires de Hôtelio au quotidien.',
   },
 
   // ── Abonnements (admin) ───────────────────────────────────────
@@ -1147,7 +1177,10 @@ const fr = {
     cannotCheckIn:   "Impossible d'effectuer le check-in.",
     cannotCheckOut:  "Impossible d'effectuer le check-out.",
     cannotCancel:    "Impossible d'annuler.",
-    cancelMsg:       "Des frais d'annulation de 1% seront retenus.\n\nFrais retenus : {{fee}} FCFA\nRemboursement : {{refund}} FCFA",
+    cancelMsg:       "Des frais d'annulation de 5% seront retenus.\n\nFrais retenus : {{fee}} FCFA\nRemboursement : {{refund}} FCFA",
+    missingPayoutContactTitle: 'Coordonnées de paiement requises',
+    missingPayoutContactMsg:   "Enregistrez d'abord un numéro mobile money ou un compte bancaire pour recevoir votre remboursement.",
+    addPayoutInfo:   'Renseigner mes coordonnées',
     planning:        'Planning',
   },
 

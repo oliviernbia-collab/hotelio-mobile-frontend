@@ -147,7 +147,7 @@ export default function BoutiqueScreen() {
       const res = await boutiqueApi.products();
       setProducts(res.data);
     } catch (e) {
-      console.error(e);
+      console.error(e?.message || e);
     } finally {
       setLoading(false);
       setRefreshing(false);

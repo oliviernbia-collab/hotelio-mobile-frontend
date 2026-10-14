@@ -128,7 +128,7 @@ export default function ExpensesScreen() {
         setHotels(Array.isArray(hotRaw) ? hotRaw : (hotRaw?.data ?? hotRaw?.hotels ?? []));
       }
     } catch (e) {
-      console.error(e);
+      console.error(e?.message || e);
     } finally {
       setLoading(false);
       setRefreshing(false);

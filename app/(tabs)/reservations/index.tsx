@@ -109,7 +109,7 @@ export default function ReservationsScreen() {
         : await reservationApi.list(params);
       setReservations(res.data.data ?? res.data);
     } catch (e) {
-      console.error(e);
+      console.error(e?.message || e);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -139,7 +139,7 @@ export default function ReservationsScreen() {
   };
 
   const handleCancel = (item: Reservation) => {
-    const fee    = Math.round((item.total ?? 0) * 0.01);
+    const fee    = Math.round((item.total ?? 0) * 0.05);
     const refund = (item.total ?? 0) - fee;
     Alert.alert(
       t('reservations.status_annulee'),
@@ -151,10 +151,22 @@ export default function ReservationsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await reservationApi.updateStatus(item.id, 'annulée');
+              await reservationApi.cancel(item.id);
               fetchData();
             } catch (e: any) {
-              Alert.alert(t('common.error'), e.response?.data?.message ?? t('resList.cannotCancel'));
+              const code = e.response?.data?.error;
+              if (code === 'missing_payout_contact') {
+                Alert.alert(
+                  t('resList.missingPayoutContactTitle'),
+                  t('resList.missingPayoutContactMsg'),
+                  [
+                    { text: t('common.cancel'), style: 'cancel' },
+                    { text: t('resList.addPayoutInfo'), onPress: () => router.push('/(tabs)/payout-info') },
+                  ]
+                );
+              } else {
+                Alert.alert(t('common.error'), e.response?.data?.message ?? t('resList.cannotCancel'));
+              }
             }
           },
         },
@@ -213,7 +225,7 @@ export default function ReservationsScreen() {
               <Text style={styles.actionBtnText}>{t('reservations.paymentMethod')}</Text>
             </TouchableOpacity>
           ) : null}
-          {user?.role === 'client' && (item.status === 'en_attente' || item.status === 'confirmée') ? (
+          {user?.role === 'client' && (item.status === 'en_attente' || item.status === 'confirmée') && !item.checkin_at ? (
             <TouchableOpacity
               style={[styles.actionBtn, { backgroundColor: '#FEE2E2' }]}
               onPress={() => handleCancel(item)}

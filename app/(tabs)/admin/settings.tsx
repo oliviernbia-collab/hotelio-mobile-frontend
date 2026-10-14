@@ -22,7 +22,7 @@ export default function AdminSettingsScreen() {
   useEffect(() => {
     settingsApi.get()
       .then((res) => setData(res.data))
-      .catch((e) => console.error(e))
+      .catch((e) => console.error(e?.message || e))
       .finally(() => setLoading(false));
   }, []);
 

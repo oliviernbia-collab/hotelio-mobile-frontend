@@ -171,7 +171,7 @@ export default function HotelsScreen() {
       }
       setHotels(res.data.data ?? res.data);
     } catch (e) {
-      console.error(e);
+      console.error(e?.message || e);
     } finally {
       setLoading(false);
       setRefreshing(false);

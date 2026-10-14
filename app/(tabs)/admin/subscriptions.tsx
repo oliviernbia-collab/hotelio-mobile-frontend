@@ -38,7 +38,7 @@ export default function AdminSubscriptionsScreen() {
     try {
       const res = await adminApi.subscriptions.list(filter ? { status: filter } : undefined);
       setSubscriptions(res.data);
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error(e?.message || e); }
     finally { setLoading(false); setRefreshing(false); }
   }, [filter]);
 

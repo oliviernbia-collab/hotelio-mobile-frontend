@@ -47,7 +47,7 @@ export default function PoolsScreen() {
       setPools(Array.isArray(poolsRes.data) ? poolsRes.data : (poolsRes.data?.data ?? []));
       const hotRaw = hotelsRes.data;
       setHotels(Array.isArray(hotRaw) ? hotRaw : (hotRaw?.data ?? []));
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error(e?.message || e); }
     finally { setLoading(false); setRefreshing(false); }
   }, [filter, isAdmin]);
 

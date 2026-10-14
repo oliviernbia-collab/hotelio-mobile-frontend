@@ -1,5 +1,8 @@
-export const API_BASE_URL = 'http://192.168.1.112:3001/api';
-export const STORAGE_URL  = 'http://192.168.1.112:3001';
+// En dev local sans .env, on retombe sur l'IP LAN historique pour ne rien casser.
+// En production, EXPO_PUBLIC_API_BASE_URL/EXPO_PUBLIC_STORAGE_URL doivent être définies
+// (voir eas.json et .env.example) avec une vraie URL HTTPS — ne jamais livrer l'IP de dev.
+export const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://192.168.1.112:3001/api';
+export const STORAGE_URL  = process.env.EXPO_PUBLIC_STORAGE_URL ?? 'http://192.168.1.112:3001';
 
 export const COLORS = {
   primary:    '#1E3A5F',

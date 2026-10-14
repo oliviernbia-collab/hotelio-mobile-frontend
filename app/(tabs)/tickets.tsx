@@ -61,7 +61,7 @@ export default function TicketsScreen() {
       const res = await ticketApi.list(params);
       setTickets(res.data.data ?? res.data);
     } catch (e) {
-      console.error(e);
+      console.error(e?.message || e);
     } finally {
       setLoading(false);
       setRefreshing(false);

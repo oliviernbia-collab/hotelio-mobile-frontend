@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
-  Alert, Image, ActivityIndicator,
+  Alert, Image, ActivityIndicator, TextInput,
 } from 'react-native';
 import { router } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
@@ -48,6 +48,9 @@ export default function ProfileScreen() {
   const { t, i18n } = useTranslation();
   const [avatarLoading,  setAvatarLoading]  = useState(false);
   const [staffRecord,    setStaffRecord]    = useState<any>(null);
+  const [showDeactivate, setShowDeactivate] = useState(false);
+  const [deactivatePassword, setDeactivatePassword] = useState('');
+  const [deactivating,  setDeactivating]    = useState(false);
 
   useEffect(() => {
     if (user?.role === 'employe') {
@@ -93,9 +96,35 @@ export default function ProfileScreen() {
     await changeLanguage(code);
   };
 
+  const handleDeactivate = () => {
+    if (!deactivatePassword) {
+      Alert.alert(t('common.error'), t('profile.deactivatePasswordRequired'));
+      return;
+    }
+    Alert.alert(t('profile.deactivateTitle'), t('profile.deactivateConfirm'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('profile.deactivateBtn'), style: 'destructive',
+        onPress: async () => {
+          setDeactivating(true);
+          try {
+            await profileApi.deactivate(deactivatePassword);
+            await logout();
+            router.replace('/(auth)/login');
+          } catch (e: any) {
+            Alert.alert(t('common.error'), e.response?.data?.message ?? t('profile.deactivateError'));
+          } finally {
+            setDeactivating(false);
+          }
+        },
+      },
+    ]);
+  };
+
   const navItems = [
     { icon: 'id-card',     label: t('profile.personalInfo'),      onPress: () => router.push('/(tabs)/personal-info' as any) },
     { icon: 'bell',        label: t('profile.nav_notifications'), onPress: () => router.push('/(tabs)/notifications' as any) },
+    { icon: 'file-contract', label: t('profile.nav_legal'),       onPress: () => router.push('/(tabs)/legal' as any) },
     ...(user?.role === 'admin' ? [
       { icon: 'users',       label: t('profile.nav_users'),       onPress: () => router.push('/(tabs)/admin/users' as any) },
       { icon: 'list',        label: t('profile.nav_logs'),        onPress: () => router.push('/(tabs)/admin/logs' as any) },
@@ -226,6 +255,30 @@ export default function ProfileScreen() {
           <Text style={styles.logoutText}>{t('profile.logout')}</Text>
         </TouchableOpacity>
 
+        {/* Zone dangereuse : désactivation de compte en self-service */}
+        <View style={styles.dangerZone}>
+          <TouchableOpacity style={styles.dangerToggle} onPress={() => setShowDeactivate(s => !s)}>
+            <FontAwesome5 name="exclamation-triangle" size={14} color={COLORS.danger} solid />
+            <Text style={styles.dangerToggleText}>{t('profile.deactivateTitle')}</Text>
+            <FontAwesome5 name={showDeactivate ? 'chevron-up' : 'chevron-down'} size={12} color={COLORS.danger} />
+          </TouchableOpacity>
+          {showDeactivate && (
+            <View style={styles.dangerContent}>
+              <Text style={styles.dangerHint}>{t('profile.deactivateHint')}</Text>
+              <TextInput
+                style={styles.dangerInput}
+                value={deactivatePassword}
+                onChangeText={setDeactivatePassword}
+                placeholder={t('profile.deactivatePasswordPlaceholder')}
+                secureTextEntry
+              />
+              <TouchableOpacity style={[styles.dangerBtn, deactivating && { opacity: 0.6 }]} onPress={handleDeactivate} disabled={deactivating}>
+                {deactivating ? <ActivityIndicator color={COLORS.white} /> : <Text style={styles.dangerBtnText}>{t('profile.deactivateBtn')}</Text>}
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+
         <View style={{ height: 32 }} />
       </ScrollView>
     </View>
@@ -279,4 +332,12 @@ const styles = StyleSheet.create({
   navLabel:      { flex: 1, fontSize: 15, color: COLORS.dark },
   logoutBtn:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: COLORS.white, margin: 12, borderRadius: 14, padding: 16, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
   logoutText:    { color: COLORS.danger, fontSize: 16, fontWeight: '700' },
+  dangerZone:    { margin: 12, marginTop: 0, backgroundColor: '#FEF2F2', borderRadius: 14, borderWidth: 1, borderColor: '#FECACA', overflow: 'hidden' },
+  dangerToggle:  { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 14 },
+  dangerToggleText: { flex: 1, color: COLORS.danger, fontSize: 13, fontWeight: '700' },
+  dangerContent: { paddingHorizontal: 14, paddingBottom: 14, gap: 10 },
+  dangerHint:    { fontSize: 12, color: '#7F1D1D', lineHeight: 17 },
+  dangerInput:   { borderWidth: 1, borderColor: '#FECACA', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, backgroundColor: COLORS.white },
+  dangerBtn:     { backgroundColor: COLORS.danger, borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
+  dangerBtnText: { color: COLORS.white, fontSize: 14, fontWeight: '700' },
 });

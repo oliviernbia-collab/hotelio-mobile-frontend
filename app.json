@@ -14,7 +14,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "ci.hotelio.mobile"
+      "bundleIdentifier": "ci.hotelio.mobile",
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "Face ID est utilisé pour protéger l'accès à vos coordonnées de paiement."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -52,6 +55,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "b7983615-c327-4236-a631-cf317670ef1e"
+      }
+    },
+    "owner": "kamenans-team"
   }
 }

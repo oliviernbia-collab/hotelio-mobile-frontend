@@ -85,7 +85,7 @@ export default function MyOrdersScreen() {
       const res = await boutiqueApi.myOrders(params);
       setOrders(Array.isArray(res.data) ? res.data : (res.data?.data ?? []));
     } catch (e) {
-      console.error(e);
+      console.error(e?.message || e);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -109,7 +109,7 @@ export default function MyOrdersScreen() {
       const items = Array.isArray(res.data) ? res.data : [];
       setItemsCache(prev => ({ ...prev, [orderId]: items }));
     } catch (e) {
-      console.error(e);
+      console.error(e?.message || e);
     } finally {
       setLoadingItems(null);
     }

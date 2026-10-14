@@ -30,7 +30,7 @@ export default function AdminReportsScreen() {
     try {
       const res = await reportApi.get({ period });
       setData(res.data);
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error(e?.message || e); }
     finally { setLoading(false); }
   }, [period]);
 

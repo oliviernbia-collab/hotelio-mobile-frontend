@@ -95,7 +95,7 @@ export default function NotificationsScreen() {
       setNotifications(res.data.data?.data ?? res.data.data ?? []);
       setUnread(res.data.unread_count ?? 0);
     } catch (e) {
-      console.error(e);
+      console.error(e?.message || e);
     } finally {
       setLoading(false);
       setRefreshing(false);

@@ -119,7 +119,7 @@ export default function MenuScreen() {
       const res = await menuApi.list();
       setItems(res.data);
     } catch (e) {
-      console.error(e);
+      console.error(e?.message || e);
     } finally {
       setLoading(false);
       setRefreshing(false);

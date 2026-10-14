@@ -45,7 +45,7 @@ export default function TopClientsScreen() {
     try {
       const res = await clientApi.top({ limit: 30 });
       setClients(res.data);
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error(e?.message || e); }
     finally { setLoading(false); setRefreshing(false); }
   };
 

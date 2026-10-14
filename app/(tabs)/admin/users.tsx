@@ -56,7 +56,7 @@ export default function AdminUsersScreen() {
     try {
       const res = await adminApi.users.list();
       setUsers(res.data);
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error(e?.message || e); }
     finally { setLoading(false); setRefreshing(false); }
   }, []);
 

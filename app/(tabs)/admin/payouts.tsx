@@ -29,7 +29,7 @@ export default function AdminPayoutsScreen() {
     try {
       const res = await adminApi.payouts.list({ type });
       setOwners(res.data);
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error(e?.message || e); }
     finally { setLoading(false); setRefreshing(false); }
   }, [type]);
 

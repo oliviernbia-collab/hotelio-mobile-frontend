@@ -72,7 +72,7 @@ export default function ServicesScreen() {
       const list = Array.isArray(hotelsRes.data) ? hotelsRes.data : (hotelsRes.data?.data ?? []);
       setHotels(list);
     } catch (e) {
-      console.error(e);
+      console.error(e?.message || e);
     } finally {
       setLoading(false);
       setRefreshing(false);

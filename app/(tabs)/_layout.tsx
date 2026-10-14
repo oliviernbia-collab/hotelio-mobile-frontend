@@ -34,6 +34,9 @@ export default function TabsLayout() {
   const isAdmin      = role === 'admin';
   const isAdminOrPr  = role === 'admin' || role === 'prestataire';
   const isStaff      = role === 'admin' || role === 'prestataire' || role === 'employe';
+  // Le prestataire gère ses produits boutique dans ce même écran (mode dédié) — seuls
+  // admin/employe n'ont rien à y faire.
+  const hideBoutiqueTab = role === 'admin' || role === 'employe';
 
   // href: null → retire complètement l'onglet (sans espace résiduel)
   // href: undefined → affiche l'onglet normalement
@@ -174,6 +177,7 @@ export default function TabsLayout() {
       <Tabs.Screen name="payout-info"   options={{ href: null, title: t('payoutInfo.screenTitle'), headerLeft: HeaderBackButton }} />
       <Tabs.Screen name="loyalty"       options={{ href: null, title: t('profile.myLoyalty'), headerLeft: HeaderBackButton }} />
       <Tabs.Screen name="personal-info" options={{ href: null, title: t('profile.personalInfo'), headerLeft: HeaderBackButton }} />
+      <Tabs.Screen name="legal"         options={{ href: null, title: t('legal.screenTitle'), headerLeft: HeaderBackButton }} />
     </Tabs>
   );
 }

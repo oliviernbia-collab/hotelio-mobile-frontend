@@ -70,7 +70,7 @@ export default function OrdersScreen() {
       if (dateTo)   params.to     = dateTo;
       const res = await orderApi.list(Object.keys(params).length ? params : undefined);
       setOrders(Array.isArray(res.data) ? res.data : (res.data?.data ?? []));
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error(e?.message || e); }
     finally { setLoading(false); setRefreshing(false); }
   }, [filter, dateFrom, dateTo]);
 

@@ -62,6 +62,7 @@ export const profileApi = {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
   updatePayout:   (data: object) => api.put('/profile/payout', data),
+  deactivate:     (password: string) => api.delete('/profile', { data: { password } }),
 };
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
@@ -105,6 +106,7 @@ export const reservationApi = {
   checkIn:        (id: number) => api.post(`/reservations/${id}/checkin`),
   checkOut:       (id: number) => api.post(`/reservations/${id}/checkout`),
   processPayment: (id: number, data: object) => api.post(`/reservations/${id}/payment`, data),
+  cancel:         (id: number) => api.post(`/reservations/${id}/cancel`),
 };
 
 // ─── Clients ─────────────────────────────────────────────────────────────────
@@ -176,8 +178,11 @@ export const facturationApi = {
   update:      (id: number, data: object) => api.put(`/facturations/${id}`, data),
   pay:         (id: number, data: object) => api.patch(`/facturations/${id}/pay`, data),
   delete:      (id: number) => api.delete(`/facturations/${id}`),
-  downloadUrl: (id: number, token: string) =>
-    `${API_BASE_URL}/facturations/${id}/download?token=${encodeURIComponent(token)}`,
+  // Jeton à usage unique (2 min) récupéré via l'en-tête Authorization habituel — évite de
+  // mettre le token de session longue durée en clair dans l'URL ouverte par Linking.openURL.
+  getDownloadToken: (id: number) => api.get(`/facturations/${id}/download-token`),
+  downloadUrlWithToken: (id: number, downloadToken: string) =>
+    `${API_BASE_URL}/facturations/${id}/download?token=${encodeURIComponent(downloadToken)}`,
 };
 
 // ─── Notifications ───────────────────────────────────────────────────────────
