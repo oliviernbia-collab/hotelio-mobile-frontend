@@ -9,6 +9,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import HeaderBackButton from '@/components/HeaderBackButton';
 import { useTranslation } from 'react-i18next';
 
+// Depuis expo-router 58, `href: null` se traduit par l'option `hidden` de React Navigation, qui
+// redirige vers l'onglet initial dès que l'écran masqué prend le focus : tous les écrans ouverts via
+// router.push (notifications, tickets, favoris…) renvoyaient alors à l'accueil. On masque donc
+// uniquement le bouton.
+const HIDDEN_TAB = { tabBarButton: () => null, tabBarItemStyle: { display: 'none' as const } };
+
 export default function TabsLayout() {
   const { user, loading } = useAuthStore();
   const insets = useSafeAreaInsets();
@@ -38,8 +44,7 @@ export default function TabsLayout() {
   // admin/employe n'ont rien à y faire.
   const hideBoutiqueTab = role === 'admin' || role === 'employe';
 
-  // href: null → retire complètement l'onglet (sans espace résiduel)
-  // href: undefined → affiche l'onglet normalement
+  // HIDDEN_TAB → retire le bouton de l'onglet (sans espace résiduel), l'écran restant accessible via router.push
 
   return (
     <Tabs
@@ -96,7 +101,7 @@ export default function TabsLayout() {
         name="rooms"
         options={{
           title: t('tabs.rooms'),
-          href: isClient ? null : undefined,
+          ...(isClient ? HIDDEN_TAB : {}),
           tabBarIcon: ({ focused, color, size }) => (
             <FontAwesome5 name="bed" size={size} color={color} solid={focused} />
           ),
@@ -108,7 +113,7 @@ export default function TabsLayout() {
         name="staff"
         options={{
           title: t('tabs.staff'),
-          href: isAdminOrPr ? undefined : null,
+          ...(isAdminOrPr ? {} : HIDDEN_TAB),
           tabBarIcon: ({ focused, color, size }) => (
             <FontAwesome5 name="users" size={size} color={color} solid={focused} />
           ),
@@ -120,7 +125,7 @@ export default function TabsLayout() {
         name="menu"
         options={{
           title: t('tabs.menu'),
-          href: isClient ? null : undefined,
+          ...(isClient ? HIDDEN_TAB : {}),
           tabBarIcon: ({ focused, color, size }) => (
             <FontAwesome5 name="utensils" size={size} color={color} solid={focused} />
           ),
@@ -132,7 +137,7 @@ export default function TabsLayout() {
         name="boutique"
         options={{
           title: t('tabs.boutique'),
-          href: isStaff ? null : undefined,
+          ...(isStaff ? HIDDEN_TAB : {}),
           tabBarIcon: ({ focused, color, size }) => (
             <FontAwesome5 name="shopping-bag" size={size} color={color} solid={focused} />
           ),
@@ -144,7 +149,7 @@ export default function TabsLayout() {
         name="admin"
         options={{
           title: t('tabs.admin'),
-          href: isAdmin ? undefined : null,
+          ...(isAdmin ? {} : HIDDEN_TAB),
           tabBarIcon: ({ focused, color, size }) => (
             <FontAwesome5 name="shield-alt" size={size} color={color} solid={focused} />
           ),
@@ -163,21 +168,22 @@ export default function TabsLayout() {
       />
 
       {/* ── Écrans sans onglet (accessibles via router.push) ── */}
-      <Tabs.Screen name="notifications" options={{ href: null, title: t('tabs.notifications'), headerLeft: HeaderBackButton }} />
-      <Tabs.Screen name="tickets"       options={{ href: null, title: t('tabs.tickets'),       headerLeft: HeaderBackButton }} />
-      <Tabs.Screen name="expenses"      options={{ href: null, title: t('tabs.expenses'),      headerLeft: HeaderBackButton }} />
-      <Tabs.Screen name="facturations"  options={{ href: null, title: t('tabs.facturations'),  headerLeft: HeaderBackButton }} />
-      <Tabs.Screen name="favorites"     options={{ href: null, title: t('tabs.favorites'),     headerLeft: HeaderBackButton }} />
-      <Tabs.Screen name="services"      options={{ href: null, title: t('tabs.services'),      headerLeft: HeaderBackButton }} />
-      <Tabs.Screen name="clients"       options={{ href: null, title: t('tabs.topClients'),    headerLeft: HeaderBackButton }} />
-      <Tabs.Screen name="pointage"      options={{ href: null, title: t('tabs.pointage'),      headerLeft: HeaderBackButton }} />
-      <Tabs.Screen name="two-factor"    options={{ href: null, title: t('twoFa.screenTitle'),  headerLeft: HeaderBackButton }} />
-      <Tabs.Screen name="pools"         options={{ href: null, title: t('tabs.pools'),         headerLeft: HeaderBackButton }} />
-      <Tabs.Screen name="orders"        options={{ href: null, title: t('tabs.orders'),        headerLeft: HeaderBackButton }} />
-      <Tabs.Screen name="payout-info"   options={{ href: null, title: t('payoutInfo.screenTitle'), headerLeft: HeaderBackButton }} />
-      <Tabs.Screen name="loyalty"       options={{ href: null, title: t('profile.myLoyalty'), headerLeft: HeaderBackButton }} />
-      <Tabs.Screen name="personal-info" options={{ href: null, title: t('profile.personalInfo'), headerLeft: HeaderBackButton }} />
-      <Tabs.Screen name="legal"         options={{ href: null, title: t('legal.screenTitle'), headerLeft: HeaderBackButton }} />
+      <Tabs.Screen name="notifications" options={{ ...HIDDEN_TAB, title: t('tabs.notifications'), headerLeft: HeaderBackButton }} />
+      <Tabs.Screen name="tickets"       options={{ ...HIDDEN_TAB, title: t('tabs.tickets'),       headerLeft: HeaderBackButton }} />
+      <Tabs.Screen name="expenses"      options={{ ...HIDDEN_TAB, title: t('tabs.expenses'),      headerLeft: HeaderBackButton }} />
+      <Tabs.Screen name="facturations"  options={{ ...HIDDEN_TAB, title: t('tabs.facturations'),  headerLeft: HeaderBackButton }} />
+      <Tabs.Screen name="favorites"     options={{ ...HIDDEN_TAB, title: t('tabs.favorites'),     headerLeft: HeaderBackButton }} />
+      <Tabs.Screen name="services"      options={{ ...HIDDEN_TAB, title: t('tabs.services'),      headerLeft: HeaderBackButton }} />
+      <Tabs.Screen name="clients"       options={{ ...HIDDEN_TAB, title: t('tabs.topClients'),    headerLeft: HeaderBackButton }} />
+      <Tabs.Screen name="staff-schedule" options={{ ...HIDDEN_TAB, title: t('staffSchedule.screenTitle'), headerLeft: HeaderBackButton }} />
+      <Tabs.Screen name="pointage"      options={{ ...HIDDEN_TAB, title: t('tabs.pointage'),      headerLeft: HeaderBackButton }} />
+      <Tabs.Screen name="two-factor"    options={{ ...HIDDEN_TAB, title: t('twoFa.screenTitle'),  headerLeft: HeaderBackButton }} />
+      <Tabs.Screen name="pools"         options={{ ...HIDDEN_TAB, title: t('tabs.pools'),         headerLeft: HeaderBackButton }} />
+      <Tabs.Screen name="orders"        options={{ ...HIDDEN_TAB, title: t('tabs.orders'),        headerLeft: HeaderBackButton }} />
+      <Tabs.Screen name="payout-info"   options={{ ...HIDDEN_TAB, title: t('payoutInfo.screenTitle'), headerLeft: HeaderBackButton }} />
+      <Tabs.Screen name="loyalty"       options={{ ...HIDDEN_TAB, title: t('profile.myLoyalty'), headerLeft: HeaderBackButton }} />
+      <Tabs.Screen name="personal-info" options={{ ...HIDDEN_TAB, title: t('profile.personalInfo'), headerLeft: HeaderBackButton }} />
+      <Tabs.Screen name="legal"         options={{ ...HIDDEN_TAB, title: t('legal.screenTitle'), headerLeft: HeaderBackButton }} />
     </Tabs>
   );
 }

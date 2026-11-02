@@ -305,7 +305,26 @@ const fr = {
   },
 
   // ── Réservations ─────────────────────────────────────────────
+  resSuccess: {
+    screenTitle: "Confirmation",
+    title: "Réservation confirmée !",
+    subtitle: "Votre séjour à {{hotel}} est confirmé.",
+    emailNote: "Un e-mail de confirmation vous a été envoyé avec votre facture PDF.",
+    code: "Code de réservation",
+    details: "Détails de votre séjour",
+    checkinHour: "Check-in à partir de 14h00",
+    checkoutHour: "Check-out avant 12h00",
+    amountPaid: "Montant payé",
+    method: "Méthode",
+    location: "Localisation de l'hôtel",
+    openMaps: "Ouvrir dans Maps",
+    downloadReceipt: "Télécharger le reçu",
+    myReservations: "Mes réservations",
+    exploreHotels: "Explorer d'autres hôtels",
+  },
+
   reservations: {
+    paymentFailedRetry: "Le paiement a échoué ou a été annulé. Choisissez un moyen de paiement pour réessayer.",
     title:        'Mes réservations',
     new:          'Nouvelle réservation',
     noReservations:'Aucune réservation',
@@ -329,6 +348,9 @@ const fr = {
     status_confirmee:  'Confirmée',
     status_occupee:    'Occupée',
     status_finalisee:  'Finalisée',
+    status_arrivee:    'Arrivée',
+    status_departie:   'Départie',
+    status_paiement_echoue: 'Paiement échoué',
     status_annulee:    'Annulée',
     tomorrow:          'Demain',
     paymentFailed:     'Paiement échoué.',
@@ -340,6 +362,8 @@ const fr = {
 
   // ── Profil ───────────────────────────────────────────────────
   profile: {
+    logoutAll: "Se déconnecter de tous les appareils",
+    logoutAllConfirm: "Toutes vos sessions seront fermées, y compris celle-ci (utile si un téléphone est perdu ou volé).",
     personalInfo:     'Informations personnelles',
     name:             'Nom',
     email:            'E-mail',
@@ -403,7 +427,24 @@ const fr = {
   },
 
   // ── Admin ────────────────────────────────────────────────────
+  adminOrders: {
+    totalSales: "Total ventes",
+    count: "Commandes",
+    paid: "Payées",
+    items: "article(s)",
+    empty: "Aucune commande",
+    status_paid: "Payée",
+    status_pending: "En attente de paiement",
+    status_cancelled: "Annulée",
+    filter_all: "Toutes",
+    filter_paid: "Payées",
+    filter_pending: "En attente",
+    filter_cancelled: "Annulées",
+  },
+
   admin: {
+    orders: "Commandes boutique",
+    ordersDesc: "Toutes les commandes de la boutique et le total des ventes",
     title:        'Panneau Admin',
     users:        'Gestion des utilisateurs',
     usersDesc:    'Créer, modifier, activer ou supprimer des comptes',
@@ -424,6 +465,12 @@ const fr = {
 
   // ── Reversements (admin) ──────────────────────────────────────
   payoutsAdmin: {
+    failedTitle: "Virements échoués",
+    failedHint: "Le virement Jèko automatique a échoué — vérifiez les coordonnées de paiement du propriétaire ou le solde du magasin, puis relancez. Une relance automatique est aussi tentée toutes les 30 minutes.",
+    retry: "Relancer",
+    retried: "Virement relancé.",
+    sourceReservation: "Réservation",
+    sourcePurchase: "Achat",
     screenTitle:    'Reversements aux propriétaires',
     owed:           'Dû',
     alreadyPaid:    'Déjà versé',
@@ -470,10 +517,34 @@ const fr = {
     chooseDesc: "Sélectionnez l'abonnement qui correspond à votre établissement.",
   },
 
+  // ── Reçus PDF (réservations et achats) ──────────────────────
+  orderSuccess: {
+    screenTitle: "Commande",
+    title: "Paiement réussi !",
+    subtitle: "Merci pour votre achat. Votre reçu est disponible ci-dessous.",
+    pendingTitle: "Paiement en cours de confirmation",
+    pendingSub: "Finalisez le paiement sur la page de votre opérateur : cette page se met à jour automatiquement.",
+    cancelledTitle: "Commande annulée",
+    order: "Commande",
+    date: "Date",
+    method: "Méthode de paiement",
+    reference: "Réf. transaction",
+    items: "Articles commandés",
+    amountPaid: "Montant payé",
+    myOrders: "Mes commandes",
+    backToShop: "Retour à la boutique",
+  },
+
+  receipt: {
+    download: 'Reçu PDF',
+    error:    "Impossible d'ouvrir le reçu. Réessayez dans un instant.",
+  },
+
   // ── Coordonnées de paiement (prestataire) ────────────────────
   payoutInfo: {
     screenTitle:      'Coordonnées de paiement',
     hint:             "Numéro mobile money ou RIB bancaire pour recevoir automatiquement votre part (total moins commission) après chaque réservation payée en ligne.",
+    hintClient:       "Numéro mobile money ou RIB bancaire sur lequel vous recevrez vos remboursements en cas d'annulation d'une réservation ou d'une commande payée en ligne.",
     currentMethod:    'Méthode actuelle',
     methodLabel:      'Méthode',
     bankAccount:      'Compte bancaire',
@@ -534,6 +605,13 @@ const fr = {
 
   // ── Avis clients ─────────────────────────────────────────────
   reviews: {
+    yourReview: "Votre avis",
+    update: "Mettre à jour mon avis",
+    deleteTitle: "Supprimer mon avis",
+    deleteConfirm: "Votre avis sur cet hôtel sera définitivement supprimé.",
+    status_pending: "En attente de validation",
+    status_approved: "Publié",
+    status_rejected: "Refusé",
     writeTitle:        'Laisser un avis',
     ratingLabel:       'Note',
     titleLabel:        'Titre (optionnel)',
@@ -658,6 +736,9 @@ const fr = {
 
   // ── Notifications ────────────────────────────────────────────
   notifications: {
+    deleteAll: "Tout supprimer",
+    deleteAllTitle: "Supprimer toutes les notifications",
+    deleteAllMsg: "Toutes vos notifications seront définitivement supprimées.",
     title:       'Notifications',
     empty:       'Aucune notification',
     emptyFilter: 'Aucune notification pour ce filtre',
@@ -707,7 +788,23 @@ const fr = {
   },
 
   // ── Pointage ────────────────────────────────────────────────────
+  staffSchedule: {
+    screenTitle: "Planning du personnel",
+    open: "Planning de la semaine",
+    tapToday: "Appuyez pour revenir à cette semaine",
+    daysShort: ["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"],
+    shift_matin: "Matin",
+    shift_apres_midi: "Après-midi",
+    shift_nuit: "Nuit",
+    shift_repos: "Repos",
+    start: "Début",
+    end: "Fin",
+    poste: "Poste",
+    postePlaceholder: "Ex : Réception, Restauration…",
+  },
+
   pointage: {
+    export: "Exporter (Excel)",
     loadError:     'Impossible de charger le pointage.',
     actionError:   "Impossible d'enregistrer le pointage.",
     noStaffRecord: "Aucune fiche employé n'est associée à votre compte.",
@@ -1129,6 +1226,14 @@ const fr = {
 
   // ── Assistant création réservation ───────────────────────────────
   createRes: {
+    datesStepLabel: "Dates",
+    paymentStepLabel: "Paiement",
+    datesTitle: "Dates de votre séjour",
+    freeRoomsCount: "{{count}} chambre(s) libre(s) à ces dates",
+    hoursHint: "Check-in à partir de 14h00 · Check-out avant 12h00",
+    fullForDates: "Complet à ces dates",
+    takenForDates: "Indisponible à ces dates",
+    nationality: "Nationalité",
     typeStepLabel:   'Type',
     startingFrom:    'à partir de',
     priceOnRequest:  'Prix sur demande',
@@ -1209,6 +1314,7 @@ const fr = {
   myOrders: {
     status_confirmee: 'Confirmée',
     status_en_cours:  'En cours',
+    status_paye:      'Payée',
     status_livree:    'Livrée',
     cancelOrderTitle: 'Annuler la commande',
     cancelOrderMsg:   'Voulez-vous annuler la commande #{{id}} ?\n\nTotal : {{total}} {{fcfa}}\n\nLes articles seront remis en stock.',

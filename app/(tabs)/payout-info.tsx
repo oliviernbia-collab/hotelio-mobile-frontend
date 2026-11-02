@@ -149,7 +149,7 @@ export default function PayoutInfoScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
-      <Text style={styles.hint}>{t('payoutInfo.hint')}</Text>
+      <Text style={styles.hint}>{t(user?.role === 'client' ? 'payoutInfo.hintClient' : 'payoutInfo.hint')}</Text>
 
       {current?.method && (
         <View style={styles.currentBox}>

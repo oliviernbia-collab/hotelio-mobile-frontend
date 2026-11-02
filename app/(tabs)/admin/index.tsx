@@ -55,6 +55,13 @@ const SECTIONS = [
     titleKey: 'admin.payouts',
     descKey: 'admin.payoutsDesc',
   },
+  {
+    icon: 'shopping-bag',
+    color: '#f59e0b',
+    route: '/(tabs)/admin/commandes' as const,
+    titleKey: 'admin.orders',
+    descKey: 'admin.ordersDesc',
+  },
 ];
 
 export default function AdminHomeScreen() {

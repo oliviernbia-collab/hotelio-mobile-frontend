@@ -7,11 +7,6 @@
     "icon": "./assets/logo.png",
     "userInterfaceStyle": "automatic",
     "scheme": "hotelio",
-    "splash": {
-      "image": "./assets/logo.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#1E3A5F"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "ci.hotelio.mobile",
@@ -50,7 +45,15 @@
       ],
       "expo-image",
       "expo-localization",
-      "expo-splash-screen",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/logo.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#1E3A5F",
+          "imageWidth": 200
+        }
+      ],
       "expo-status-bar"
     ],
     "experiments": {

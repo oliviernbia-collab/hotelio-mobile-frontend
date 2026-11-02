@@ -33,7 +33,7 @@ echo     Backend demarre ^✓
 
 :: Demarrer Expo dans une nouvelle fenetre
 echo [3/3] Demarrage d'Expo...
-start "Hotelio Expo" cmd /k "cd /d %~dp0 && npx expo start"
+start "Hotelio Expo :8082" cmd /k "cd /d %~dp0 && npx expo start --port 8082"
 
 echo.
 echo ======================================

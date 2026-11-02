@@ -82,9 +82,11 @@ export interface Reservation {
   nights: number;
   price: number;
   total: number;
-  status: 'en_attente' | 'confirmée' | 'annulée' | 'terminée';
+  // 'arrivée' / 'départie' : check-in / check-out (mêmes statuts que le web) ; 'terminée' : ancien statut
+  status: 'en_attente' | 'confirmée' | 'arrivée' | 'départie' | 'annulée' | 'terminée' | 'paiement_échoué';
   paid: boolean;
   payment_method?: string;
+  jeko_reference?: string | null;
   checkin_at?: string;
   checkout_at?: string;
   notes?: string;
@@ -267,6 +269,18 @@ export interface Subscription {
   max_hotels?: number | null;
   user_name?: string;
   user_email?: string;
+}
+
+/** Virement Jèko automatique en échec (réservation ou ligne d'achat), relançable par l'admin. */
+export interface FailedPayout {
+  id: number;
+  code?: string;
+  commande_id?: number;
+  hotel_name?: string | null;
+  product_name?: string | null;
+  owner_name: string | null;
+  net_amount: number;
+  reason: string | null;
 }
 
 export interface PayoutBalance {

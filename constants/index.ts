@@ -1,8 +1,12 @@
-// En dev local sans .env, on retombe sur l'IP LAN historique pour ne rien casser.
+import Constants from 'expo-constants';
+
+// En dev local sans .env, on vise le backend (port 3001) sur la machine qui sert le bundle
+// Expo : son IP LAN est lue dans hostUri, ce qui suit automatiquement les changements d'IP.
 // En production, EXPO_PUBLIC_API_BASE_URL/EXPO_PUBLIC_STORAGE_URL doivent être définies
 // (voir eas.json et .env.example) avec une vraie URL HTTPS — ne jamais livrer l'IP de dev.
-export const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://192.168.1.112:3001/api';
-export const STORAGE_URL  = process.env.EXPO_PUBLIC_STORAGE_URL ?? 'http://192.168.1.112:3001';
+const DEV_HOST = Constants.expoConfig?.hostUri?.split(':')[0] ?? '192.168.1.66';
+export const STORAGE_URL  = process.env.EXPO_PUBLIC_STORAGE_URL ?? `http://${DEV_HOST}:3001`;
+export const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? `${STORAGE_URL}/api`;
 
 export const COLORS = {
   primary:    '#1E3A5F',
@@ -45,5 +49,9 @@ export const RESERVATION_STATUS_COLORS: Record<string, string> = {
   'en_attente': '#F39C12',
   'confirmée':  '#2ECC71',
   'annulée':    '#E74C3C',
+  // Check-in / check-out : mêmes statuts que le web (base partagée)
+  'arrivée':    '#3498DB',
+  'départie':   '#95A5A6',
   'terminée':   '#95A5A6',
+  'paiement_échoué': '#E74C3C',
 };

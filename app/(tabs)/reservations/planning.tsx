@@ -14,7 +14,7 @@ import { useAuthStore } from '@/store/authStore';
 /* ── Types ─────────────────────────────────────────────────────────────── */
 type Period    = '7j' | '30j' | '90j';
 type ViewMode  = 'arrivees' | 'departs' | 'tous';
-type StatusFilter = 'tous' | 'confirmée' | 'en_attente' | 'annulée' | 'complétée';
+type StatusFilter = 'tous' | 'confirmée' | 'en_attente' | 'arrivée' | 'annulée' | 'départie';
 
 /* ── Constantes ────────────────────────────────────────────────────────── */
 const PERIODS: { key: Period; labelKey: string; days: number }[] = [
@@ -27,13 +27,18 @@ const STATUS_FILTERS: { key: StatusFilter; labelKey: string }[] = [
   { key: 'tous',       labelKey: 'hotels.tab_all'             },
   { key: 'confirmée',  labelKey: 'planning.filter_confirmed'  },
   { key: 'en_attente', labelKey: 'reservations.status_en_attente' },
+  { key: 'arrivée',    labelKey: 'reservations.status_arrivee' },
+  { key: 'départie',   labelKey: 'planning.filter_completed'  },
   { key: 'annulée',    labelKey: 'planning.filter_cancelled'  },
-  { key: 'complétée',  labelKey: 'planning.filter_completed'  },
 ];
 
+// Mêmes statuts que le web : 'arrivée' au check-in, 'départie' au check-out
+// ('complétée' / 'terminée' : anciens statuts encore présents en base)
 const STATUS_LABEL_KEYS: Record<string, string> = {
   confirmée: 'reservations.status_confirmee', en_attente: 'planning.status_attente',
+  arrivée: 'reservations.status_arrivee', départie: 'planning.status_completed',
   annulée: 'reservations.status_annulee', complétée: 'planning.status_completed', terminée: 'planning.status_completed',
+  paiement_échoué: 'reservations.status_paiement_echoue',
 };
 
 /* ── Helpers ───────────────────────────────────────────────────────────── */
@@ -174,7 +179,7 @@ export default function PlanningScreen() {
     const isExpanded  = expandedId === item.id;
     const today       = toISO(new Date());
     const canCheckin  = item.status === 'confirmée' && item.checkin <= today && !item.checkin_at;
-    const canCheckout = item.status === 'confirmée' && !!item.checkin_at && !item.checkout_at;
+    const canCheckout = item.status !== 'annulée' && !!item.checkin_at && !item.checkout_at; // statut 'arrivée' après le check-in
 
     return (
       <TouchableOpacity

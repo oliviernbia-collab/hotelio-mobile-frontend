@@ -3,6 +3,7 @@ import {
   View, Text, SectionList, TextInput, TouchableOpacity, StyleSheet,
   Alert, RefreshControl, ScrollView, Platform,
 } from 'react-native';
+import type { TextInputInstance } from 'react-native';
 import { Stack } from 'expo-router';
 import { adminApi } from '@/services/api';
 import { COLORS } from '@/constants';
@@ -111,7 +112,7 @@ export default function AdminLogsScreen() {
   const [loading,      setLoading]      = useState(true);
   const [refreshing,   setRefreshing]   = useState(false);
 
-  const searchRef = useRef<TextInput>(null);
+  const searchRef = useRef<TextInputInstance>(null);
 
   const fetchLogs = useCallback(async () => {
     try {

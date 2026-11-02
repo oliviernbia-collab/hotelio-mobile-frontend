@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
-  Alert, ActivityIndicator, Dimensions, Image, Linking,
+  Alert, ActivityIndicator, Dimensions, Image, Linking, TextInput,
 } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -44,9 +44,15 @@ function floorLabel(floor: number, t: (k: string, o?: any) => string) {
   return t('createRes.nthFloor', { floor });
 }
 
-function todayStr() {
-  const d = new Date();
+function dateStr(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function todayStr() {
+  return dateStr(new Date());
+}
+function addDays(iso: string, n: number) {
+  const [y, m, d] = iso.split('-').map(Number);
+  return dateStr(new Date(y, m - 1, d + n));
 }
 function fmtDisplay(iso: string, monthsShort: string[]) {
   const [y, m, d] = iso.split('-');
@@ -99,14 +105,14 @@ export default function CreateReservationScreen() {
   const [loading,      setLoading]      = useState(false);
 
   const [selHotel,  setSelHotel]  = useState<number | null>(hotel_id ? Number(hotel_id) : null);
-  const [selType,   setSelType]   = useState<string | null>(null);
   const [selRoom,   setSelRoom]   = useState<number | null>(null);
-  const [checkin,   setCheckin]   = useState('');
-  const [checkout,  setCheckout]  = useState('');
+  // Comme le formulaire web : arrivée aujourd'hui, départ demain par défaut
+  const [checkin,   setCheckin]   = useState(todayStr());
+  const [checkout,  setCheckout]  = useState(addDays(todayStr(), 1));
   const [datePick,  setDatePick]  = useState<'in' | 'out' | null>(null);
   const [payMethod, setPayMethod] = useState('');
   const [payInfo,   setPayInfo]   = useState<PaymentInfo>({ ...EMPTY_PAYMENT_INFO });
-  const [notes,     setNotes]     = useState('');
+  const [nationality, setNationality] = useState("Côte d'Ivoire");
 
   // ── Fetch hôtels ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -121,23 +127,27 @@ export default function CreateReservationScreen() {
     });
   }, []);
 
-  // ── Fetch chambres disponibles quand hôtel sélectionné ───────────────────
+  // ── Chambres de l'hôtel avec leur disponibilité aux dates choisies ────────
+  // Comme la page hôtel du web : toutes les chambres sont listées, celles déjà réservées sur
+  // la période sont signalées indisponibles (le serveur calcule `available` d'après les dates).
   useEffect(() => {
-    if (!selHotel) return;
+    if (!selHotel || !checkin || !checkout || checkout <= checkin) return;
     setRoomsLoading(true);
-    setSelType(null);
     setSelRoom(null);
-    roomApi.list({ hotel_id: selHotel, status: 'disponible' })
+    roomApi.list({ hotel_id: selHotel, checkin, checkout })
       .then(res => setRooms(res.data.data ?? res.data))
       .catch(() => setRooms([]))
       .finally(() => setRoomsLoading(false));
-  }, [selHotel]);
+  }, [selHotel, checkin, checkout]);
 
   // ── Dérivés ───────────────────────────────────────────────────────────────
   const hotelData = hotels.find(h => h.id === selHotel);
   const roomData  = rooms.find(r => r.id === selRoom);
 
-  // Grouper les chambres disponibles par type
+  const isFree = (r: Room) => (r as any).available !== false;
+  const freeCount = rooms.filter(isFree).length;
+
+  // Grouper les chambres par type (count = chambres libres aux dates choisies)
   const typeGroups = useMemo(() => {
     const map: Record<string, Room[]> = {};
     rooms.forEach(r => {
@@ -146,14 +156,13 @@ export default function CreateReservationScreen() {
     });
     return Object.entries(map).map(([type, list]) => ({
       type,
-      count: list.length,
+      count: list.filter(isFree).length,
       minPrice: Math.min(...list.map(r => Number(r.price) || Number(hotelData?.price) || 0)),
       maxPrice: Math.max(...list.map(r => Number(r.price) || Number(hotelData?.price) || 0)),
       capacity: list[0]?.capacity ?? 2,
+      rooms: list,
     }));
   }, [rooms, hotelData]);
-
-  const filteredRooms = selType ? rooms.filter(r => r.type === selType) : [];
 
   const nights = checkin && checkout
     ? Math.max(0, Math.round((new Date(checkout).getTime() - new Date(checkin).getTime()) / 86400000))
@@ -162,14 +171,16 @@ export default function CreateReservationScreen() {
   const total         = nights * pricePerNight;
 
   // ── Navigation entre étapes ───────────────────────────────────────────────
-  const goNext = () => setStep(s => Math.min(s + 1, 3));
+  // Même ordre que le web : on choisit les dates avant la chambre, la disponibilité en dépend.
+  const LAST_STEP = 3;
+  const goNext = () => setStep(s => Math.min(s + 1, LAST_STEP));
   const goBack = () => setStep(s => Math.max(s - 1, 0));
 
   const canNext = [
     !!selHotel,
-    !!selType,
+    !!checkin && !!checkout && nights > 0,
     !!selRoom,
-    !!checkin && !!checkout && nights > 0 && !!payMethod,
+    !!payMethod && !!nationality.trim(),
   ];
 
   // ── Soumission ────────────────────────────────────────────────────────────
@@ -178,33 +189,31 @@ export default function CreateReservationScreen() {
     if (infoError) { Alert.alert(t('reservations.paymentMethod'), infoError); return; }
     setLoading(true);
     try {
+      // Prix, nuits et total sont recalculés par le serveur à partir de la chambre et des dates.
       const res = await reservationApi.create({
         hotel_id:       selHotel,
         room_id:        selRoom,
         checkin,
         checkout,
-        nights,
-        price:          pricePerNight || undefined,
-        total:          total || undefined,
         payment_method: payMethod,
-        notes:          notes || undefined,
+        nationality:    nationality.trim(),
+        channel:        'App mobile',
       });
       const newId = res.data?.id;
       const payRes = newId ? await reservationApi.processPayment(newId, { payment_method: payMethod }) : null;
 
+      // Même enchaînement que le web : paiement en ligne → page Jèko, puis l'écran de paiement
+      // attend la confirmation ; espèces/virement → confirmation immédiate.
       if (payRes?.data?.redirectUrl) {
+        router.replace({ pathname: '/(tabs)/reservations/payment', params: { id: newId, redirect: payRes.data.redirectUrl } } as any);
         Linking.openURL(payRes.data.redirectUrl);
-        Alert.alert(t('reservations.paymentPending'), undefined, [
-          { text: t('common.ok'), onPress: () => router.replace(`/(tabs)/reservations/payment?id=${newId}` as any) },
-        ]);
         return;
       }
-
-      Alert.alert(
-        t('reservations.confirmed'),
-        t('reservations.confirmedMsg', { hotel: hotelData?.name, count: nights }),
-        [{ text: t('common.ok'), onPress: () => router.replace('/(tabs)/reservations' as any) }]
-      );
+      if (payRes?.data?.paid) {
+        router.replace({ pathname: '/(tabs)/reservations/success', params: { id: newId } } as any);
+        return;
+      }
+      router.replace({ pathname: '/(tabs)/reservations/payment', params: { id: newId } } as any);
     } catch (e: any) {
       Alert.alert(t('common.error'), e.response?.data?.message ?? t('createRes.cannotCreate'));
     } finally { setLoading(false); }
@@ -226,7 +235,7 @@ export default function CreateReservationScreen() {
         ),
       }} />
       {/* Stepper fixe en haut */}
-      <Stepper step={step} steps={[t('reservations.hotel'), t('createRes.typeStepLabel'), t('reservations.room'), t('reservations.checkin') + ' & ' + t('reservations.paymentMethod')]} />
+      <Stepper step={step} steps={[t('reservations.hotel'), t('createRes.datesStepLabel'), t('reservations.room'), t('createRes.paymentStepLabel')]} />
 
       <ScrollView style={ss.scroll} contentContainerStyle={ss.scrollContent} keyboardShouldPersistTaps="handled">
 
@@ -292,11 +301,55 @@ export default function CreateReservationScreen() {
           </View>
         )}
 
-        {/* ── Étape 1 : Choisir le type de chambre ── */}
+        {/* ── Étape 1 : Dates du séjour ── */}
         {step === 1 && (
           <View>
+            <Text style={ss.stepTitle}>{t('createRes.datesTitle')}</Text>
+            <Text style={ss.stepSub}>{hotelData?.name}</Text>
+
+            <View style={ss.datesRow}>
+              <TouchableOpacity style={[ss.dateBtn, { flex: 1 }]} onPress={() => setDatePick('in')}>
+                <FontAwesome5 name="sign-in-alt" size={14} color={COLORS.primary} />
+                <View>
+                  <Text style={ss.dateBtnLabel}>{t('reservations.checkin')}</Text>
+                  <Text style={[ss.dateBtnValue, !checkin && ss.placeholder]}>
+                    {checkin ? fmtDisplay(checkin, monthsShort) : t('hotels.chooseDate')}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+              <FontAwesome5 name="arrow-right" size={12} color={COLORS.textMuted} />
+              <TouchableOpacity style={[ss.dateBtn, { flex: 1 }]} onPress={() => setDatePick('out')}>
+                <FontAwesome5 name="sign-out-alt" size={14} color={COLORS.danger} />
+                <View>
+                  <Text style={ss.dateBtnLabel}>{t('reservations.checkout')}</Text>
+                  <Text style={[ss.dateBtnValue, !checkout && ss.placeholder]}>
+                    {checkout ? fmtDisplay(checkout, monthsShort) : t('hotels.chooseDate')}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+
+            {nights > 0 && (
+              <View style={ss.availBox}>
+                <FontAwesome5 name="moon" size={13} color={COLORS.primary} solid />
+                <Text style={ss.availText}>
+                  {nights} {nights > 1 ? t('common.nights') : t('common.night')}
+                  {!roomsLoading && ` · ${t('createRes.freeRoomsCount', { count: freeCount })}`}
+                </Text>
+                {roomsLoading && <ActivityIndicator size="small" color={COLORS.primary} />}
+              </View>
+            )}
+            <Text style={ss.hoursHint}>{t('createRes.hoursHint')}</Text>
+          </View>
+        )}
+
+        {/* ── Étape 2 : Choisir la chambre ── */}
+        {/* Une seule liste, comme le sélecteur de chambre du web (« numéro — type — prix ») :
+            les chambres sont regroupées sous un en-tête par type, sans étape « type » séparée. */}
+        {step === 2 && (
+          <View>
             <Text style={ss.stepTitle}>{t('reservations.room')}</Text>
-            <Text style={ss.stepSub}>{hotelData?.name} · {rooms.length} {rooms.length > 1 ? t('createRes.rooms') : t('createRes.room')} {rooms.length > 1 ? t('createRes.availableWordPlural') : t('createRes.availableWord')}</Text>
+            <Text style={ss.stepSub}>{hotelData?.name} · {t('createRes.freeRoomsCount', { count: freeCount })}</Text>
 
             {roomsLoading ? (
               <View style={ss.centered}>
@@ -309,103 +362,56 @@ export default function CreateReservationScreen() {
                 <Text style={ss.emptyText}>{t('dashboard.noRoomsAvailable')}</Text>
                 <Text style={ss.emptySub}>{t('hotels.noResults')}</Text>
               </View>
-            ) : (
-              typeGroups.map(g => {
-                const meta   = ROOM_TYPE_META[g.type];
-                const active = selType === g.type;
-                const samePrice = g.minPrice === g.maxPrice;
-                return (
-                  <TouchableOpacity
-                    key={g.type}
-                    style={[ss.typeCard, active && ss.typeCardActive]}
-                    onPress={() => setSelType(g.type)}
-                    activeOpacity={0.85}
-                  >
-                    {/* Emoji type */}
-                    <View style={[ss.typeEmojiBox, active && { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-                      <Text style={ss.typeEmoji}>{meta?.emoji ?? '🏨'}</Text>
-                    </View>
+            ) : typeGroups.map(g => (
+            <View key={g.type} style={ss.typeSection}>
+              {/* En-tête du type */}
+              <View style={ss.typeHeader}>
+                <Text style={ss.typeHeaderEmoji}>{ROOM_TYPE_META[g.type]?.emoji ?? '🏨'}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={ss.typeHeaderName}>{t(ROOM_TYPE_KEYS[g.type] ?? g.type)}</Text>
+                  <Text style={ss.typeHeaderSub} numberOfLines={2}>
+                    {ROOM_TYPE_META[g.type]?.descKey ? `${t(ROOM_TYPE_META[g.type].descKey)} · ` : ''}
+                    {g.capacity} {g.capacity > 1 ? t('createRes.personPlural') : t('createRes.person')}
+                  </Text>
+                </View>
+                <View style={[ss.typeCountBadge, g.count === 0 && { backgroundColor: '#FEE2E2' }]}>
+                  <Text style={[ss.typeCount, g.count === 0 && { color: COLORS.danger }]}>
+                    {g.count === 0 ? t('createRes.fullForDates') : `${g.count} ${g.count > 1 ? t('createRes.freePlural') : t('createRes.free')}`}
+                  </Text>
+                </View>
+              </View>
 
-                    <View style={{ flex: 1 }}>
-                      <View style={ss.typeNameRow}>
-                        <Text style={[ss.typeName, active && { color: COLORS.white }]}>{t(ROOM_TYPE_KEYS[g.type] ?? g.type)}</Text>
-                        <View style={[ss.typeCountBadge, active && { backgroundColor: 'rgba(255,255,255,0.25)' }]}>
-                          <Text style={[ss.typeCount, active && { color: COLORS.white }]}>
-                            {g.count} {g.count > 1 ? t('createRes.freePlural') : t('createRes.free')}
-                          </Text>
-                        </View>
-                      </View>
-                      {meta?.descKey && (
-                        <Text style={[ss.typeDesc, active && { color: 'rgba(255,255,255,0.8)' }]}>{t(meta.descKey)}</Text>
-                      )}
-                      <View style={ss.typeMeta}>
-                        <View style={ss.typeMetaItem}>
-                          <FontAwesome5 name="user" size={9} color={active ? 'rgba(255,255,255,0.7)' : COLORS.textMuted} />
-                          <Text style={[ss.typeMetaText, active && { color: 'rgba(255,255,255,0.8)' }]}>
-                            {g.capacity} {g.capacity > 1 ? t('createRes.personPlural') : t('createRes.person')}
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-
-                    {/* Prix */}
-                    <View style={[ss.typePriceBox, active && { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
-                      {g.minPrice > 0 ? (
-                        <>
-                          {!samePrice && <Text style={[ss.typePriceFrom, active && { color: 'rgba(255,255,255,0.7)' }]}>{t('createRes.startingFrom')}</Text>}
-                          <Text style={[ss.typePrice, active && { color: '#FCD34D' }]}>
-                            {g.minPrice.toLocaleString()}
-                          </Text>
-                          <Text style={[ss.typeCurrency, active && { color: 'rgba(255,255,255,0.7)' }]}>{t('createRes.fcfaPerNight')}</Text>
-                          {!samePrice && (
-                            <Text style={[ss.typePriceMax, active && { color: 'rgba(255,255,255,0.55)' }]}>
-                              {t('createRes.upTo', { max: g.maxPrice.toLocaleString() })}
-                            </Text>
-                          )}
-                        </>
-                      ) : (
-                        <Text style={[ss.typePriceSurDevis, active && { color: 'rgba(255,255,255,0.8)' }]}>{t('createRes.onRequest')}</Text>
-                      )}
-                    </View>
-
-                    {active && (
-                      <View style={ss.typeCheck}>
-                        <FontAwesome5 name="check" size={10} color={COLORS.primary} />
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                );
-              })
-            )}
-          </View>
-        )}
-
-        {/* ── Étape 2 : Choisir la chambre spécifique ── */}
-        {step === 2 && (
-          <View>
-            <Text style={ss.stepTitle}>{t('reservations.room')}</Text>
-            <Text style={ss.stepSub}>{t(ROOM_TYPE_KEYS[selType ?? ''] ?? selType ?? '')} · {filteredRooms.length} {filteredRooms.length > 1 ? t('createRes.availableWordPlural') : t('createRes.availableWord')}</Text>
-
-            {filteredRooms.map(r => {
+            {g.rooms.map(r => {
               const active       = selRoom === r.id;
+              const taken        = !isFree(r);
               const price        = Number(r.price) || Number(hotelData?.price) || 0;
               const situationTxt = (r as any).vue?.trim() || r.description?.trim() || '';
               const hasSituation = !!situationTxt;
               return (
                 <TouchableOpacity
                   key={r.id}
-                  style={[ss.roomCard, active && ss.roomCardActive]}
+                  style={[ss.roomCard, active && ss.roomCardActive, taken && ss.cardDisabled]}
                   onPress={() => setSelRoom(r.id)}
+                  disabled={taken}
                   activeOpacity={0.85}
                 >
-                  {/* Numéro + étage */}
-                  <View style={[ss.roomNumBox, active && { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-                    <Text style={[ss.roomNumLabel, active && { color: 'rgba(255,255,255,0.75)' }]}>{t('createRes.noLabel')}</Text>
-                    <Text style={[ss.roomNum, active && { color: COLORS.white }]}>{r.number}</Text>
-                    <Text style={[ss.roomFloor, active && { color: 'rgba(255,255,255,0.8)' }]}>
-                      {floorLabel(r.floor ?? 0, t)}
-                    </Text>
-                  </View>
+                  {/* Photo réelle de la chambre (numéro en surimpression), sinon numéro + étage */}
+                  {r.image_url ? (
+                    <View style={ss.roomPhotoBox}>
+                      <Image source={{ uri: r.image_url }} style={ss.roomPhoto} resizeMode="cover" />
+                      <View style={ss.roomPhotoTag}>
+                        <Text style={ss.roomPhotoTagText}>{t('createRes.noLabel')}{r.number}</Text>
+                      </View>
+                    </View>
+                  ) : (
+                    <View style={[ss.roomNumBox, active && { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                      <Text style={[ss.roomNumLabel, active && { color: 'rgba(255,255,255,0.75)' }]}>{t('createRes.noLabel')}</Text>
+                      <Text style={[ss.roomNum, active && { color: COLORS.white }]}>{r.number}</Text>
+                      <Text style={[ss.roomFloor, active && { color: 'rgba(255,255,255,0.8)' }]}>
+                        {floorLabel(r.floor ?? 0, t)}
+                      </Text>
+                    </View>
+                  )}
 
                   <View style={{ flex: 1, paddingHorizontal: 2 }}>
                     {/* Badges caractéristiques */}
@@ -423,6 +429,13 @@ export default function CreateReservationScreen() {
                         </View>
                       ) : null}
                     </View>
+
+                    {taken && (
+                      <View style={ss.takenBadge}>
+                        <FontAwesome5 name="ban" size={9} color={COLORS.danger} />
+                        <Text style={ss.takenBadgeText}>{t('createRes.takenForDates')}</Text>
+                      </View>
+                    )}
 
                     {/* Situation / description */}
                     {hasSituation && (
@@ -452,23 +465,26 @@ export default function CreateReservationScreen() {
                 </TouchableOpacity>
               );
             })}
+            </View>
+            ))}
           </View>
         )}
 
-        {/* ── Étape 3 : Dates + Paiement ── */}
+        {/* ── Étape 3 : Paiement ── */}
         {step === 3 && (
           <View>
             {/* Récap chambre sélectionnée */}
             <View style={ss.recapBanner}>
               <View style={ss.recapBannerLeft}>
-                {hotelData?.image_url ? (
-                  <Image source={{ uri: hotelData.image_url }} style={ss.recapBannerImg} resizeMode="cover" />
+                {/* Photo de la chambre choisie en priorité, à défaut celle de l'hôtel */}
+                {(roomData?.image_url || hotelData?.image_url) ? (
+                  <Image source={{ uri: (roomData?.image_url || hotelData?.image_url)! }} style={ss.recapBannerImg} resizeMode="cover" />
                 ) : (
-                  <Text style={ss.recapBannerEmoji}>{typeEmoji(selType ?? '')}</Text>
+                  <Text style={ss.recapBannerEmoji}>{typeEmoji(roomData?.type ?? '')}</Text>
                 )}
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={ss.recapBannerTitle}>{t(ROOM_TYPE_KEYS[selType ?? ''] ?? selType ?? '')} · {hotelData?.name}</Text>
+                <Text style={ss.recapBannerTitle}>{t(ROOM_TYPE_KEYS[roomData?.type ?? ''] ?? roomData?.type ?? '')} · {hotelData?.name}</Text>
                 <Text style={ss.recapBannerSub}>
                   {t('createRes.roomNumberFloor', { number: roomData?.number, floor: floorLabel(roomData?.floor ?? 0, t) })}
                   {((roomData as any)?.vue || roomData?.description) ? `\n👁 ${(roomData as any)?.vue || roomData?.description}` : ''}
@@ -480,31 +496,7 @@ export default function CreateReservationScreen() {
               </View>
             </View>
 
-            {/* Dates */}
-            <SectionTitle label={t('reservations.checkin') + ' / ' + t('reservations.checkout')} icon="calendar-alt" />
-            <View style={ss.datesRow}>
-              <TouchableOpacity style={[ss.dateBtn, { flex: 1 }]} onPress={() => setDatePick('in')}>
-                <FontAwesome5 name="sign-in-alt" size={14} color={COLORS.primary} />
-                <View>
-                  <Text style={ss.dateBtnLabel}>{t('reservations.checkin')}</Text>
-                  <Text style={[ss.dateBtnValue, !checkin && ss.placeholder]}>
-                    {checkin ? fmtDisplay(checkin, monthsShort) : t('hotels.chooseDate')}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-              <FontAwesome5 name="arrow-right" size={12} color={COLORS.textMuted} />
-              <TouchableOpacity style={[ss.dateBtn, { flex: 1 }]} onPress={() => setDatePick('out')}>
-                <FontAwesome5 name="sign-out-alt" size={14} color={COLORS.danger} />
-                <View>
-                  <Text style={ss.dateBtnLabel}>{t('reservations.checkout')}</Text>
-                  <Text style={[ss.dateBtnValue, !checkout && ss.placeholder]}>
-                    {checkout ? fmtDisplay(checkout, monthsShort) : t('hotels.chooseDate')}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            </View>
-
-            {/* Récap prix */}
+            {/* Récap prix (estimation, comme sur le web ; le serveur recalcule le montant) */}
             {nights > 0 && pricePerNight > 0 && (
               <View style={ss.priceRecap}>
                 <View style={ss.priceRecapRow}>
@@ -540,23 +532,24 @@ export default function CreateReservationScreen() {
             ))}
             <PaymentInfoFields method={payMethod} info={payInfo} onChange={setPayInfo} />
 
-            {/* Notes */}
-            <SectionTitle label={t('reservations.notes')} icon="comment-alt" />
+            {/* Nationalité (champ requis du formulaire web) */}
+            <SectionTitle label={t('createRes.nationality')} icon="flag" />
             <View style={ss.notesBox}>
-              <FontAwesome5 name="comment-dots" size={14} color={COLORS.textMuted} style={{ marginRight: 8, marginTop: 2 }} />
-              <Text
+              <FontAwesome5 name="globe-africa" size={14} color={COLORS.textMuted} style={{ marginRight: 8, marginTop: 2 }} />
+              <TextInput
                 style={[ss.notesInput, { flex: 1 }]}
-                onPress={() => {}}
-              >
-                {notes || <Text style={ss.placeholder}>{t('createRes.notesPlaceholder')}</Text>}
-              </Text>
+                value={nationality}
+                onChangeText={setNationality}
+                placeholder={t('createRes.nationality')}
+                placeholderTextColor={COLORS.textMuted}
+              />
             </View>
 
             {/* Récap final avant confirmation */}
             <View style={ss.finalRecap}>
               <Text style={ss.finalRecapTitle}>{t('reservations.title')}</Text>
               <RecapRow icon="building"      label={t('reservations.hotel')}         value={hotelData?.name ?? '—'} />
-              <RecapRow icon="bed"           label={t('reservations.room')}          value={selType ? t(ROOM_TYPE_KEYS[selType] ?? selType) : '—'} />
+              <RecapRow icon="bed"           label={t('reservations.room')}          value={roomData?.type ? t(ROOM_TYPE_KEYS[roomData.type] ?? roomData.type) : '—'} />
               <RecapRow icon="door-open"     label={t('common.room')}                value={`${t('createRes.noLabel')}${roomData?.number ?? '—'} · ${floorLabel(roomData?.floor ?? 0, t)}`} />
               {((roomData as any)?.vue || roomData?.description) ? <RecapRow icon="eye" label={t('createRes.viewSituation')} value={(roomData as any)?.vue || roomData?.description!} /> : null}
               <RecapRow icon="calendar"      label={t('reservations.checkin')}       value={checkin  ? fmtLong(checkin, monthsFull)  : '—'} />
@@ -585,7 +578,7 @@ export default function CreateReservationScreen() {
           </TouchableOpacity>
         )}
 
-        {step < 3 ? (
+        {step < LAST_STEP ? (
           <TouchableOpacity
             style={[ss.nextBtn, !canNext[step] && ss.nextBtnDisabled, step === 0 && { flex: 1 }]}
             onPress={goNext}
@@ -596,9 +589,9 @@ export default function CreateReservationScreen() {
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
-            style={[ss.confirmBtn, (!canNext[3] || loading) && ss.nextBtnDisabled]}
+            style={[ss.confirmBtn, (!canNext[LAST_STEP] || loading) && ss.nextBtnDisabled]}
             onPress={handleSubmit}
-            disabled={!canNext[3] || loading}
+            disabled={!canNext[LAST_STEP] || loading}
           >
             {loading ? <ActivityIndicator color={COLORS.white} /> : (
               <>
@@ -619,13 +612,13 @@ export default function CreateReservationScreen() {
         value={checkin}
         minDate={todayStr()}
         title={t('hotels.arrivalDate')}
-        onConfirm={d => { setCheckin(d); if (checkout && d >= checkout) setCheckout(''); setDatePick(null); }}
+        onConfirm={d => { setCheckin(d); if (!checkout || d >= checkout) setCheckout(addDays(d, 1)); setDatePick(null); }}
         onCancel={() => setDatePick(null)}
       />
       <DatePicker
         visible={datePick === 'out'}
         value={checkout}
-        minDate={checkin || todayStr()}
+        minDate={addDays(checkin || todayStr(), 1)}
         title={t('hotels.departureDate')}
         onConfirm={d => { setCheckout(d); setDatePick(null); }}
         onCancel={() => setDatePick(null)}
@@ -697,25 +690,8 @@ const ss = StyleSheet.create({
   hotelNight:      { fontSize: 10, color: COLORS.textMuted },
 
   // Types de chambre
-  typeCard:        { backgroundColor: COLORS.white, borderRadius: 16, padding: 14, marginBottom: 10, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 2, borderColor: COLORS.border, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, elevation: 2 },
-  typeCardActive:  { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  typeEmojiBox:    { width: 52, height: 52, borderRadius: 14, backgroundColor: '#EEF2FF', justifyContent: 'center', alignItems: 'center' },
-  typeEmoji:       { fontSize: 26 },
-  typeNameRow:     { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 3 },
-  typeName:        { fontSize: 16, fontWeight: '700', color: COLORS.dark, flex: 1 },
   typeCountBadge:  { backgroundColor: '#EEF2FF', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
   typeCount:       { fontSize: 10, fontWeight: '700', color: COLORS.primary },
-  typeDesc:        { fontSize: 11, color: COLORS.textMuted, marginBottom: 5 },
-  typeMeta:        { flexDirection: 'row', gap: 12 },
-  typeMetaItem:    { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  typeMetaText:    { fontSize: 11, color: COLORS.textMuted },
-  typePriceBox:    { alignItems: 'flex-end', paddingLeft: 8, minWidth: 90 },
-  typePriceFrom:   { fontSize: 9, color: COLORS.textMuted },
-  typePrice:       { fontSize: 17, fontWeight: '900', color: COLORS.primary },
-  typeCurrency:    { fontSize: 9, color: COLORS.textMuted },
-  typePriceMax:    { fontSize: 9, color: COLORS.textMuted },
-  typePriceSurDevis:{ fontSize: 12, color: COLORS.textMuted, fontStyle: 'italic' },
-  typeCheck:       { position: 'absolute', top: 10, right: 10, width: 20, height: 20, borderRadius: 10, backgroundColor: COLORS.white, justifyContent: 'center', alignItems: 'center' },
 
   // Chambres spécifiques
   roomCard:        { backgroundColor: COLORS.white, borderRadius: 16, padding: 14, marginBottom: 10, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 2, borderColor: COLORS.border, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, elevation: 2 },
@@ -724,6 +700,10 @@ const ss = StyleSheet.create({
   roomNumLabel:    { fontSize: 9, color: COLORS.textMuted, fontWeight: '600' },
   roomNum:         { fontSize: 22, fontWeight: '900', color: COLORS.primary },
   roomFloor:       { fontSize: 9, color: COLORS.textMuted, textAlign: 'center', marginTop: 2 },
+  roomPhotoBox:    { width: 88, height: 88, borderRadius: 12, overflow: 'hidden', backgroundColor: '#EEF2FF' },
+  roomPhoto:       { width: '100%', height: '100%' },
+  roomPhotoTag:    { position: 'absolute', left: 0, right: 0, bottom: 0, paddingVertical: 3, backgroundColor: 'rgba(30,58,95,0.78)', alignItems: 'center' },
+  roomPhotoTagText:{ fontSize: 11, fontWeight: '800', color: COLORS.white },
   roomBadges:      { flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginBottom: 6 },
   badge:           { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#EEF2FF', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
   badgeActive:     { backgroundColor: 'rgba(255,255,255,0.2)' },
@@ -762,8 +742,21 @@ const ss = StyleSheet.create({
   pmCheck:        { width: 24, height: 24, borderRadius: 12, backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center' },
 
   // Notes
-  notesBox:  { flexDirection: 'row', alignItems: 'flex-start', borderWidth: 1, borderColor: COLORS.border, borderRadius: 12, padding: 12, backgroundColor: COLORS.white, marginBottom: 16, minHeight: 60 },
-  notesInput:{ fontSize: 14, color: COLORS.dark },
+  notesBox:  { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: COLORS.border, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 4, backgroundColor: COLORS.white, marginBottom: 16 },
+  notesInput:{ fontSize: 14, color: COLORS.dark, paddingVertical: 8 },
+  // Disponibilité aux dates choisies (parité avec la page hôtel du web)
+  availBox:  { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 16, padding: 12, borderRadius: 12, backgroundColor: COLORS.primary + '10' },
+  availText: { flex: 1, fontSize: 14, fontWeight: '600', color: COLORS.primary },
+  hoursHint: { marginTop: 10, fontSize: 12, color: COLORS.textMuted },
+  cardDisabled: { opacity: 0.45 },
+  // Liste des chambres regroupées par type
+  typeSection:     { marginBottom: 18 },
+  typeHeader:      { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  typeHeaderEmoji: { fontSize: 24 },
+  typeHeaderName:  { fontSize: 15, fontWeight: '800', color: COLORS.dark },
+  typeHeaderSub:   { fontSize: 12, color: COLORS.textMuted, marginTop: 1 },
+  takenBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start', marginBottom: 6, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: '#FEE2E2' },
+  takenBadgeText: { fontSize: 11, fontWeight: '700', color: COLORS.danger },
 
   // Sections
   sectionTitle:     { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 16, marginBottom: 10 },

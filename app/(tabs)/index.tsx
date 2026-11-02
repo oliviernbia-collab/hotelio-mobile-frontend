@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, RefreshControl, TouchableOpacity,
   Modal, Image, Dimensions, Alert, Linking,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { LANGUAGES, changeLanguage, LangCode } from '@/i18n';
 import { dashboardApi, roomApi, notificationApi, subscriptionApi } from '@/services/api';
@@ -30,9 +30,12 @@ const DASH_ROOM_TYPE_KEYS: Record<string, string> = {
 const DASH_STATUS_KEYS: Record<string, string> = {
   en_attente: 'reservations.status_en_attente',
   confirmée:  'reservations.status_confirmee',
+  arrivée:    'reservations.status_arrivee',
+  départie:   'reservations.status_departie',
   occupée:    'reservations.status_occupee',
   terminée:   'reservations.status_finalisee',
   annulée:    'reservations.status_annulee',
+  paiement_échoué: 'reservations.status_paiement_echoue',
 };
 
 export default function DashboardScreen() {
@@ -130,9 +133,15 @@ export default function DashboardScreen() {
   useEffect(() => {
     fetchData();
     fetchRooms();
-    fetchUnread();
     fetchSubscription();
   }, []);
+
+  // Badge de la cloche : relu à chaque retour sur l'écran et toutes les 30 s pendant qu'il est affiché.
+  useFocusEffect(useCallback(() => {
+    fetchUnread();
+    const timer = setInterval(fetchUnread, 30000);
+    return () => clearInterval(timer);
+  }, []));
 
   const onRefresh = () => {
     setRefreshing(true);

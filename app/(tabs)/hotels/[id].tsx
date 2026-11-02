@@ -9,6 +9,7 @@ import { Hotel, Room, Review } from '@/types';
 import { COLORS, ROOM_STATUS_COLORS } from '@/constants';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useAuthStore } from '@/store/authStore';
+import HotelMap from '@/components/HotelMap';
 
 const AMENITY_KEYS: Record<string, string> = {
   wifi: 'hotels.wifi', piscine: 'hotels.piscine', parking: 'hotels.parking',
@@ -41,6 +42,8 @@ export default function HotelDetailScreen() {
   const [reviewTitle,   setReviewTitle]   = useState('');
   const [reviewComment, setReviewComment] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
+  // Avis du client sur cet hôtel (même en attente de modération), comme la page hôtel du web
+  const [myReview, setMyReview] = useState<{ id: number; rating: number; title?: string | null; comment: string; status: string } | null>(null);
 
   const fetchHotel = () => {
     hotelApi.get(Number(id))
@@ -49,7 +52,41 @@ export default function HotelDetailScreen() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetchHotel(); }, [id]);
+  const fetchMyReview = () => {
+    if (user?.role !== 'client') return;
+    hotelApi.reviews.mine(Number(id))
+      .then((res) => {
+        setMyReview(res.data);
+        if (res.data) {
+          setReviewRating(res.data.rating);
+          setReviewTitle(res.data.title ?? '');
+          setReviewComment(res.data.comment ?? '');
+        }
+      })
+      .catch(() => {});
+  };
+
+  useEffect(() => { fetchHotel(); fetchMyReview(); }, [id]);
+
+  const handleDeleteReview = () => {
+    if (!myReview) return;
+    Alert.alert(t('reviews.deleteTitle'), t('reviews.deleteConfirm'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('common.delete'), style: 'destructive',
+        onPress: async () => {
+          try {
+            await hotelApi.reviews.delete(myReview.id);
+            setMyReview(null);
+            setReviewRating(5); setReviewTitle(''); setReviewComment('');
+            fetchHotel();
+          } catch (e: any) {
+            Alert.alert(t('common.error'), e.response?.data?.message ?? t('common.error'));
+          }
+        },
+      },
+    ]);
+  };
 
   const handleSubmitReview = async () => {
     if (!reviewComment.trim() || reviewComment.trim().length < 10) {
@@ -63,9 +100,7 @@ export default function HotelDetailScreen() {
         title: reviewTitle.trim() || undefined,
         comment: reviewComment.trim(),
       });
-      setReviewTitle('');
-      setReviewComment('');
-      setReviewRating(5);
+      fetchMyReview();
       Alert.alert(t('common.success'), t('reviews.submitSuccess'));
     } catch (e: any) {
       Alert.alert(t('common.error'), e.response?.data?.message ?? t('reviews.submitError'));
@@ -126,6 +161,18 @@ export default function HotelDetailScreen() {
         </View>
       )}
 
+      {/* Localisation (même carte que la page hôtel du web) */}
+      <View style={{ marginHorizontal: 12, marginTop: 4 }}>
+        <HotelMap
+          name={hotel.name}
+          quartier={hotel.quartier}
+          city={hotel.city}
+          latitude={(hotel as any).latitude}
+          longitude={(hotel as any).longitude}
+          height={200}
+        />
+      </View>
+
       {/* Chambres disponibles */}
       {hotel.rooms?.length > 0 && (
         <View style={styles.section}>
@@ -160,7 +207,7 @@ export default function HotelDetailScreen() {
           {hotel.reviews.map((r: any) => (
             <View key={r.id} style={styles.reviewCard}>
               <View style={styles.reviewHeader}>
-                <Text style={styles.reviewAuthor}>{r.user?.name ?? t('hotels.anonymous')}</Text>
+                <Text style={styles.reviewAuthor}>{r.user_name ?? r.user?.name ?? t('hotels.anonymous')}</Text>
                 <Text style={styles.reviewRating}>{'⭐'.repeat(r.rating)}</Text>
               </View>
               {r.title && <Text style={styles.reviewTitle}>{r.title}</Text>}
@@ -173,7 +220,18 @@ export default function HotelDetailScreen() {
       {/* Laisser un avis (client) */}
       {user?.role === 'client' && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('reviews.writeTitle')}</Text>
+          <Text style={styles.sectionTitle}>{myReview ? t('reviews.yourReview') : t('reviews.writeTitle')}</Text>
+          {myReview && (
+            <View style={styles.myReviewBar}>
+              <Text style={[styles.myReviewStatus, { color: myReview.status === 'approved' ? COLORS.success : myReview.status === 'rejected' ? COLORS.danger : '#D97706' }]}>
+                {t(`reviews.status_${myReview.status}`, myReview.status)}
+              </Text>
+              <TouchableOpacity style={styles.myReviewDelete} onPress={handleDeleteReview}>
+                <FontAwesome5 name="trash-alt" size={12} color={COLORS.danger} />
+                <Text style={styles.myReviewDeleteText}>{t('common.delete')}</Text>
+              </TouchableOpacity>
+            </View>
+          )}
           <View style={styles.starPicker}>
             {[1, 2, 3, 4, 5].map((n) => (
               <TouchableOpacity key={n} onPress={() => setReviewRating(n)}>
@@ -209,7 +267,7 @@ export default function HotelDetailScreen() {
           >
             {submittingReview
               ? <ActivityIndicator color={COLORS.white} />
-              : <Text style={styles.reviewSubmitText}>{t('reviews.submit')}</Text>}
+              : <Text style={styles.reviewSubmitText}>{myReview ? t('reviews.update') : t('reviews.submit')}</Text>}
           </TouchableOpacity>
         </View>
       )}
@@ -271,6 +329,10 @@ const styles = StyleSheet.create({
   reviewTitle:     { fontWeight: '600', color: COLORS.dark, marginBottom: 4 },
   reviewComment:   { fontSize: 13, color: COLORS.textMuted, lineHeight: 20 },
   starPicker:      { flexDirection: 'row', marginBottom: 12 },
+  myReviewBar:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+  myReviewStatus:  { fontSize: 12, fontWeight: '700' },
+  myReviewDelete:  { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: '#FEE2E2' },
+  myReviewDeleteText: { fontSize: 12, fontWeight: '700', color: COLORS.danger },
   reviewInput:     { borderWidth: 1, borderColor: COLORS.border, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 11, fontSize: 14, color: COLORS.text, backgroundColor: COLORS.background, marginBottom: 10 },
   reviewSubmitBtn: { backgroundColor: COLORS.primary, borderRadius: 10, paddingVertical: 13, alignItems: 'center', marginTop: 2 },
   reviewSubmitText:{ color: COLORS.white, fontSize: 14, fontWeight: '700' },

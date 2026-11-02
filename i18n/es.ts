@@ -288,7 +288,26 @@ const es = {
     cat_auberge:        'Albergue',
   },
 
+  resSuccess: {
+    screenTitle: "Confirmación",
+    title: "¡Reserva confirmada!",
+    subtitle: "Tu estancia en {{hotel}} está confirmada.",
+    emailNote: "Te hemos enviado un correo de confirmación con tu factura en PDF.",
+    code: "Código de reserva",
+    details: "Detalles de tu estancia",
+    checkinHour: "Check-in desde las 14:00",
+    checkoutHour: "Check-out antes de las 12:00",
+    amountPaid: "Importe pagado",
+    method: "Método",
+    location: "Ubicación del hotel",
+    openMaps: "Abrir en Maps",
+    downloadReceipt: "Descargar el recibo",
+    myReservations: "Mis reservas",
+    exploreHotels: "Explorar otros hoteles",
+  },
+
   reservations: {
+    paymentFailedRetry: "El pago falló o fue cancelado. Elige un método de pago para intentarlo de nuevo.",
     title:        'Mis reservas',
     new:          'Nueva reserva',
     noReservations:'Sin reservas',
@@ -311,6 +330,9 @@ const es = {
     status_confirmee:  'Confirmada',
     status_occupee:    'Ocupada',
     status_finalisee:  'Finalizada',
+    status_arrivee:    'Llegada',
+    status_departie:   'Salida',
+    status_paiement_echoue: 'Pago fallido',
     status_annulee:    'Cancelada',
     tomorrow:          'Mañana',
     paymentFailed:     'Pago fallido.',
@@ -321,6 +343,8 @@ const es = {
   },
 
   profile: {
+    logoutAll: "Cerrar sesión en todos los dispositivos",
+    logoutAllConfirm: "Se cerrarán todas tus sesiones, incluida esta (útil si pierdes o te roban el teléfono).",
     personalInfo:     'Información personal',
     name:             'Nombre',
     email:            'Correo',
@@ -381,7 +405,24 @@ const es = {
     lang_es:   'Español',
   },
 
+  adminOrders: {
+    totalSales: "Total de ventas",
+    count: "Pedidos",
+    paid: "Pagados",
+    items: "artículo(s)",
+    empty: "Sin pedidos",
+    status_paid: "Pagado",
+    status_pending: "Pendiente de pago",
+    status_cancelled: "Cancelado",
+    filter_all: "Todos",
+    filter_paid: "Pagados",
+    filter_pending: "Pendientes",
+    filter_cancelled: "Cancelados",
+  },
+
   admin: {
+    orders: "Pedidos de la tienda",
+    ordersDesc: "Todos los pedidos de la tienda y el total de ventas",
     title:        'Panel de Administración',
     users:        'Gestión de usuarios',
     usersDesc:    'Crear, editar, activar o eliminar cuentas',
@@ -401,6 +442,12 @@ const es = {
   },
 
   payoutsAdmin: {
+    failedTitle: "Transferencias fallidas",
+    failedHint: "La transferencia automática de Jèko falló — verifica los datos de pago del propietario o el saldo de la tienda y vuelve a intentarlo. También se intenta automáticamente cada 30 minutos.",
+    retry: "Reintentar",
+    retried: "Transferencia reintentada.",
+    sourceReservation: "Reserva",
+    sourcePurchase: "Compra",
     screenTitle:    'Pagos a propietarios',
     owed:           'Debido',
     alreadyPaid:    'Ya pagado',
@@ -445,9 +492,32 @@ const es = {
     chooseDesc: 'Selecciona la suscripción que se adapte a tu establecimiento.',
   },
 
+  orderSuccess: {
+    screenTitle: "Pedido",
+    title: "¡Pago realizado!",
+    subtitle: "Gracias por tu compra. Tu recibo está disponible abajo.",
+    pendingTitle: "Pago en confirmación",
+    pendingSub: "Completa el pago en la página de tu operador: esta página se actualiza automáticamente.",
+    cancelledTitle: "Pedido cancelado",
+    order: "Pedido",
+    date: "Fecha",
+    method: "Método de pago",
+    reference: "Ref. de transacción",
+    items: "Artículos pedidos",
+    amountPaid: "Importe pagado",
+    myOrders: "Mis pedidos",
+    backToShop: "Volver a la tienda",
+  },
+
+  receipt: {
+    download: 'Recibo PDF',
+    error:    'No se puede abrir el recibo. Inténtalo de nuevo en un momento.',
+  },
+
   payoutInfo: {
     screenTitle:      'Datos de pago',
     hint:             'Número de mobile money o cuenta bancaria para recibir automáticamente tu parte (total menos comisión) después de cada reserva pagada en línea.',
+    hintClient:       'Número de mobile money o cuenta bancaria donde recibirás tus reembolsos si cancelas una reserva o un pedido pagado en línea.',
     currentMethod:    'Método actual',
     methodLabel:      'Método',
     bankAccount:      'Cuenta bancaria',
@@ -505,6 +575,13 @@ const es = {
   },
 
   reviews: {
+    yourReview: "Tu opinión",
+    update: "Actualizar mi opinión",
+    deleteTitle: "Eliminar mi opinión",
+    deleteConfirm: "Tu opinión sobre este hotel se eliminará definitivamente.",
+    status_pending: "Pendiente de validación",
+    status_approved: "Publicada",
+    status_rejected: "Rechazada",
     writeTitle:        'Dejar una reseña',
     ratingLabel:       'Calificación',
     titleLabel:        'Título (opcional)',
@@ -623,6 +700,9 @@ const es = {
   },
 
   notifications: {
+    deleteAll: "Eliminar todo",
+    deleteAllTitle: "Eliminar todas las notificaciones",
+    deleteAllMsg: "Todas tus notificaciones se eliminarán definitivamente.",
     title:       'Notificaciones',
     empty:       'Sin notificaciones',
     emptyFilter: 'Sin notificaciones para este filtro',
@@ -669,7 +749,23 @@ const es = {
   },
 
   // ── Fichaje ─────────────────────────────────────────────────────
+  staffSchedule: {
+    screenTitle: "Horario del personal",
+    open: "Horario de la semana",
+    tapToday: "Toca para volver a esta semana",
+    daysShort: ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"],
+    shift_matin: "Mañana",
+    shift_apres_midi: "Tarde",
+    shift_nuit: "Noche",
+    shift_repos: "Descanso",
+    start: "Inicio",
+    end: "Fin",
+    poste: "Puesto",
+    postePlaceholder: "Ej.: Recepción, Restaurante…",
+  },
+
   pointage: {
+    export: "Exportar (Excel)",
     loadError:     'No se pudo cargar el fichaje.',
     actionError:   'No se pudo registrar el fichaje.',
     noStaffRecord: 'Ninguna ficha de empleado está vinculada a tu cuenta.',
@@ -1076,6 +1172,14 @@ const es = {
   },
 
   createRes: {
+    datesStepLabel: "Fechas",
+    paymentStepLabel: "Pago",
+    datesTitle: "Fechas de tu estancia",
+    freeRoomsCount: "{{count}} habitación(es) libre(s) en estas fechas",
+    hoursHint: "Check-in desde las 14:00 · Check-out antes de las 12:00",
+    fullForDates: "Completo en estas fechas",
+    takenForDates: "No disponible en estas fechas",
+    nationality: "Nacionalidad",
     typeStepLabel:   'Tipo',
     startingFrom:    'desde',
     priceOnRequest:  'Precio a consultar',
@@ -1153,6 +1257,7 @@ const es = {
   myOrders: {
     status_confirmee: 'Confirmado',
     status_en_cours:  'En curso',
+    status_paye:      'Pagado',
     status_livree:    'Entregado',
     cancelOrderTitle: 'Cancelar pedido',
     cancelOrderMsg:   '¿Deseas cancelar el pedido #{{id}}?\n\nTotal: {{total}} {{fcfa}}\n\nLos artículos volverán al stock.',

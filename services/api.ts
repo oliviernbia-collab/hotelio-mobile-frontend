@@ -41,6 +41,7 @@ export const authApi = {
   register: (formData: FormData) =>
     api.post('/auth/register', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   logout:         () => api.post('/auth/logout'),
+  logoutAll:      () => api.post('/auth/logout-all'),
   me:             () => api.get('/auth/me'),
   forgotPassword: (email: string) => api.post('/auth/forgot-password', { email }),
 };
@@ -80,6 +81,8 @@ export const hotelApi = {
   delete:  (id: number) => api.delete(`/hotels/${id}`),
   reviews: {
     create: (hotelId: number, data: object) => api.post(`/hotels/${hotelId}/reviews`, data),
+    mine:   (hotelId: number) => api.get(`/hotels/${hotelId}/my-review`),
+    delete: (reviewId: number) => api.delete(`/reviews/${reviewId}`),
   },
   favorite: (hotelId: number) => api.post(`/hotels/${hotelId}/favorite`),
 };
@@ -106,6 +109,10 @@ export const reservationApi = {
   checkIn:        (id: number) => api.post(`/reservations/${id}/checkin`),
   checkOut:       (id: number) => api.post(`/reservations/${id}/checkout`),
   processPayment: (id: number, data: object) => api.post(`/reservations/${id}/payment`, data),
+  verifyPayment:  (id: number) => api.post(`/reservations/${id}/payment/verify`),
+  receiptToken:   (id: number) => api.get(`/reservations/${id}/receipt-token`),
+  receiptUrl:     (id: number, token: string) =>
+    `${API_BASE_URL}/reservations/${id}/receipt?token=${encodeURIComponent(token)}`,
   cancel:         (id: number) => api.post(`/reservations/${id}/cancel`),
 };
 
@@ -191,6 +198,7 @@ export const notificationApi = {
   markRead:    (id: string) => api.patch(`/notifications/${id}/read`),
   markAllRead: () => api.patch('/notifications/read-all'),
   delete:      (id: string) => api.delete(`/notifications/${id}`),
+  deleteAll:   () => api.delete('/notifications'),
 };
 
 // ─── Favoris ─────────────────────────────────────────────────────────────────
@@ -215,6 +223,9 @@ export const boutiqueApi = {
   myOrders:       (params?: object) => api.get('/boutique/my-orders', { params }),
   orderItems:     (id: number) => api.get(`/boutique/orders/${id}/items`),
   cancelOrder:    (id: number) => api.patch(`/boutique/orders/${id}/cancel`),
+  receiptToken:   (id: number) => api.get(`/boutique/orders/${id}/receipt-token`),
+  receiptUrl:     (id: number, token: string) =>
+    `${API_BASE_URL}/boutique/orders/${id}/receipt?token=${encodeURIComponent(token)}`,
 };
 
 // ─── Services prestataire ────────────────────────────────────────────────────
@@ -232,6 +243,8 @@ export const pointageApi = {
   checkIn:  () => api.post('/pointage/check-in'),
   checkOut: () => api.post('/pointage/check-out'),
   report:   (params?: object) => api.get('/pointage/report', { params }),
+  exportToken: (params?: object) => api.get('/pointage/export-token', { params }),
+  exportUrl:   (token: string) => `${API_BASE_URL}/pointage/export?token=${encodeURIComponent(token)}`,
 };
 
 // ─── Abonnements ─────────────────────────────────────────────────────────────
@@ -266,6 +279,12 @@ export const adminApi = {
   payouts: {
     list:   (params?: { type?: 'tous' | 'reservations' | 'achats' }) => api.get('/admin/payouts', { params }),
     record: (userId: number, data: { amount: number; notes?: string }) => api.post(`/admin/payouts/${userId}`, data),
+    failed:        () => api.get('/admin/payouts/failed'),
+    retry:         (reservationId: number) => api.post(`/admin/payouts/retry/${reservationId}`),
+    retryCommande: (ligneId: number) => api.post(`/admin/payouts/retry-commande/${ligneId}`),
+  },
+  orders: {
+    list: (params?: { statut?: string }) => api.get('/admin/orders', { params }),
   },
 };
 

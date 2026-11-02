@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   View, Text, FlatList, StyleSheet, TouchableOpacity,
   RefreshControl, Alert, ActivityIndicator,
 } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, useFocusEffect } from 'expo-router';
 import { boutiqueApi } from '@/services/api';
+import { openReceipt } from '@/services/receipt';
 import { COLORS, PAYMENT_METHODS } from '@/constants';
 import { FontAwesome5 } from '@expo/vector-icons';
 import PaymentMethodIcon from '@/components/PaymentMethodIcon';
@@ -39,6 +40,8 @@ const STATUS_COLORS: Record<string, string> = {
   confirmée: '#10b981',
   annulée:   '#E74C3C',
   en_cours:  '#f59e0b',
+  payé:      '#10b981',
+  payée:     '#10b981',
   livrée:    '#6366f1',
 };
 
@@ -46,6 +49,8 @@ const STATUS_ICONS: Record<string, string> = {
   confirmée: 'check-circle',
   annulée:   'times-circle',
   en_cours:  'clock',
+  payé:      'check-circle',
+  payée:     'check-circle',
   livrée:    'box-open',
 };
 
@@ -53,6 +58,8 @@ const STATUS_LABEL_KEYS: Record<string, string> = {
   confirmée: 'myOrders.status_confirmee',
   annulée:   'reservations.status_annulee',
   en_cours:  'myOrders.status_en_cours',
+  payé:      'myOrders.status_paye',
+  payée:     'myOrders.status_paye',
   livrée:    'myOrders.status_livree',
 };
 
@@ -92,7 +99,15 @@ export default function MyOrdersScreen() {
     }
   };
 
-  useEffect(() => { fetchOrders(); }, [dateFrom, dateTo]);
+  // Rechargé à chaque affichage (l'écran reste monté entre deux visites), puis toutes les 5 s
+  // tant qu'un paiement Jèko est en attente : le serveur le vérifie auprès de Jèko à chaque appel.
+  const hasPending = orders.some(o => o.statut === 'en_cours');
+  useFocusEffect(useCallback(() => {
+    fetchOrders();
+    if (!hasPending) return;
+    const timer = setInterval(fetchOrders, 5000);
+    return () => clearInterval(timer);
+  }, [dateFrom, dateTo, hasPending]));
 
   /* ── Toggle détail articles ───────────────────────────────────────────── */
   const toggleDetail = async (orderId: number) => {
@@ -116,6 +131,17 @@ export default function MyOrdersScreen() {
   };
 
   /* ── Annulation ───────────────────────────────────────────────────────── */
+  const handleReceipt = async (item: Order) => {
+    try {
+      await openReceipt(
+        () => boutiqueApi.receiptToken(item.id),
+        (token) => boutiqueApi.receiptUrl(item.id, token),
+      );
+    } catch (e: any) {
+      Alert.alert(t('common.error'), e.response?.data?.message ?? t('receipt.error'));
+    }
+  };
+
   const handleCancel = (item: Order) => {
     Alert.alert(
       t('myOrders.cancelOrderTitle'),
@@ -152,7 +178,10 @@ export default function MyOrdersScreen() {
     const icon        = STATUS_ICONS[item.statut]   ?? 'shopping-bag';
     const statusLabel = t(STATUS_LABEL_KEYS[item.statut] ?? item.statut, item.statut);
     const pm          = item.mode_paiement ? PM_MAP[item.mode_paiement] : null;
-    const canCancel   = item.statut === 'confirmée' || item.statut === 'en_cours';
+    // 'payé' : paiement Jèko confirmé, annulable avec remboursement (voir cancelOrder côté serveur)
+    const canCancel   = ['confirmée', 'en_cours', 'payé', 'payée'].includes(item.statut);
+    // Mêmes statuts que RECEIPT_STATUSES côté serveur : achat réglé
+    const hasReceipt  = ['payé', 'payée', 'confirmée', 'livrée'].includes(item.statut);
     const isExpanded  = expandedId === item.id;
     const isLoadingThis = loadingItems === item.id;
     const orderItems  = itemsCache[item.id] ?? [];
@@ -241,6 +270,14 @@ export default function MyOrdersScreen() {
               </>
             )}
           </View>
+        )}
+
+        {/* Reçu PDF */}
+        {hasReceipt && (
+          <TouchableOpacity style={styles.receiptBtn} onPress={() => handleReceipt(item)}>
+            <FontAwesome5 name="file-pdf" size={13} color={COLORS.primary} />
+            <Text style={styles.receiptBtnText}>{t('receipt.download')}</Text>
+          </TouchableOpacity>
         )}
 
         {/* Bouton annulation */}
@@ -365,6 +402,8 @@ const styles = StyleSheet.create({
   /* Annulation */
   cancelBtn:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, marginTop: 12, paddingVertical: 10, borderRadius: 10, backgroundColor: '#FEE2E2', borderWidth: 1, borderColor: '#FECACA' },
   cancelBtnText: { fontSize: 13, fontWeight: '600', color: COLORS.danger },
+  receiptBtn:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, marginTop: 12, paddingVertical: 10, borderRadius: 10, backgroundColor: COLORS.primary + '12', borderWidth: 1, borderColor: COLORS.primary + '33' },
+  receiptBtnText: { fontSize: 13, fontWeight: '600', color: COLORS.primary },
 
   /* Empty */
   empty:         { alignItems: 'center', paddingTop: 80, gap: 10, paddingHorizontal: 32 },

@@ -9,7 +9,7 @@ import { adminApi } from '@/services/api';
 import { COLORS } from '@/constants';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { PayoutBalance } from '@/types';
+import { PayoutBalance, FailedPayout } from '@/types';
 
 const TYPES = ['tous', 'reservations', 'achats'] as const;
 type PayoutType = typeof TYPES[number];
@@ -25,13 +25,62 @@ export default function AdminPayoutsScreen() {
   const [notes,      setNotes]      = useState('');
   const [saving,     setSaving]     = useState(false);
 
+  const [failed,     setFailed]     = useState<{ reservations: FailedPayout[]; lignes: FailedPayout[] }>({ reservations: [], lignes: [] });
+  const [retrying,   setRetrying]   = useState<string | null>(null);
+
   const fetchOwners = useCallback(async () => {
     try {
-      const res = await adminApi.payouts.list({ type });
+      const [res, fail] = await Promise.all([adminApi.payouts.list({ type }), adminApi.payouts.failed()]);
       setOwners(res.data);
+      setFailed(fail.data);
     } catch (e) { console.error(e?.message || e); }
     finally { setLoading(false); setRefreshing(false); }
   }, [type]);
+
+  // Relance d'un virement Jèko en échec (comme le bouton « Relancer » de la page admin web)
+  const handleRetry = async (kind: 'reservation' | 'ligne', id: number) => {
+    setRetrying(`${kind}-${id}`);
+    try {
+      const res = kind === 'reservation' ? await adminApi.payouts.retry(id) : await adminApi.payouts.retryCommande(id);
+      Alert.alert(t('common.success'), res.data?.message ?? t('payoutsAdmin.retried'));
+      fetchOwners();
+    } catch (e: any) {
+      Alert.alert(t('common.error'), e.response?.data?.message ?? t('common.error'));
+    } finally {
+      setRetrying(null);
+    }
+  };
+
+  const failedRows = [
+    ...failed.reservations.map((r) => ({ ...r, kind: 'reservation' as const, label: `${t('payoutsAdmin.sourceReservation')} ${r.code} · ${r.hotel_name ?? ''}` })),
+    ...failed.lignes.map((l) => ({ ...l, kind: 'ligne' as const, label: `${t('payoutsAdmin.sourcePurchase')} #${l.commande_id} · ${l.product_name ?? ''}` })),
+  ];
+
+  const failedSection = failedRows.length > 0 ? (
+    <View style={styles.failedBox}>
+      <Text style={styles.failedTitle}>
+        <FontAwesome5 name="exclamation-triangle" size={13} color={COLORS.danger} />  {t('payoutsAdmin.failedTitle')}
+      </Text>
+      <Text style={styles.failedHint}>{t('payoutsAdmin.failedHint')}</Text>
+      {failedRows.map((f) => {
+        const key = `${f.kind}-${f.id}`;
+        return (
+          <View key={key} style={styles.failedRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.failedLabel}>{f.label}</Text>
+              <Text style={styles.failedMeta}>{f.owner_name ?? '—'} · {Number(f.net_amount).toLocaleString()} FCFA</Text>
+              {f.reason ? <Text style={styles.failedReason}>{f.reason}</Text> : null}
+            </View>
+            <TouchableOpacity style={styles.retryBtn} onPress={() => handleRetry(f.kind, f.id)} disabled={retrying === key}>
+              {retrying === key
+                ? <ActivityIndicator size="small" color={COLORS.white} />
+                : <Text style={styles.retryBtnText}>{t('payoutsAdmin.retry')}</Text>}
+            </TouchableOpacity>
+          </View>
+        );
+      })}
+    </View>
+  ) : null;
 
   useEffect(() => { fetchOwners(); }, [fetchOwners]);
 
@@ -123,6 +172,7 @@ export default function AdminPayoutsScreen() {
             keyExtractor={(o) => String(o.id)}
             renderItem={renderItem}
             contentContainerStyle={{ padding: 12, paddingBottom: 40 }}
+            ListHeaderComponent={failedSection ?? undefined}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchOwners(); }} colors={[COLORS.primary]} />}
             ListEmptyComponent={
               <View style={styles.empty}>
@@ -172,6 +222,15 @@ export default function AdminPayoutsScreen() {
 }
 
 const styles = StyleSheet.create({
+  failedBox:    { backgroundColor: '#FEF2F2', borderRadius: 14, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: '#FECACA' },
+  failedTitle:  { fontSize: 15, fontWeight: '800', color: COLORS.danger, marginBottom: 4 },
+  failedHint:   { fontSize: 12, color: COLORS.textMuted, marginBottom: 10, lineHeight: 17 },
+  failedRow:    { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, borderTopWidth: 1, borderTopColor: '#FECACA' },
+  failedLabel:  { fontSize: 13, fontWeight: '700', color: COLORS.dark },
+  failedMeta:   { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
+  failedReason: { fontSize: 11, color: COLORS.danger, marginTop: 2 },
+  retryBtn:     { backgroundColor: COLORS.danger, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, minWidth: 80, alignItems: 'center' },
+  retryBtnText: { color: COLORS.white, fontSize: 12, fontWeight: '700' },
   container:   { flex: 1, backgroundColor: COLORS.background },
   center:      { flex: 1, justifyContent: 'center', alignItems: 'center' },
   card:        { backgroundColor: COLORS.white, borderRadius: 14, padding: 14, marginBottom: 10, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },

@@ -7,7 +7,7 @@ import { router } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/store/authStore';
-import { profileApi, staffApi } from '@/services/api';
+import { profileApi, staffApi, authApi } from '@/services/api';
 import { COLORS } from '@/constants';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { LANGUAGES, changeLanguage, LangCode } from '@/i18n';
@@ -92,6 +92,26 @@ export default function ProfileScreen() {
     ]);
   };
 
+  // Révoque toutes les sessions (ex. téléphone perdu ou volé), y compris celle-ci
+  const handleLogoutAll = () => {
+    Alert.alert(t('profile.logoutAll'), t('profile.logoutAllConfirm'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('profile.logoutBtn'), style: 'destructive',
+        onPress: async () => {
+          try {
+            await authApi.logoutAll();
+          } catch (e: any) {
+            Alert.alert(t('common.error'), e.response?.data?.message ?? t('common.error'));
+            return;
+          }
+          await logout();
+          router.replace('/(auth)/login');
+        },
+      },
+    ]);
+  };
+
   const handleChangeLanguage = async (code: LangCode) => {
     await changeLanguage(code);
   };
@@ -146,6 +166,8 @@ export default function ProfileScreen() {
       { icon: 'calendar-check', label: t('profile.nav_reservations'), onPress: () => router.push('/(tabs)/reservations' as any) },
       { icon: 'heart',          label: t('profile.nav_favorites'),    onPress: () => router.push('/(tabs)/favorites' as any) },
       { icon: 'shopping-bag',   label: t('profile.nav_orders'),       onPress: () => router.push('/(tabs)/boutique/my-orders' as any) },
+      // Coordonnées de remboursement (annulation d'une réservation ou commande payée en ligne)
+      { icon: 'hand-holding-usd', label: t('profile.nav_payoutInfo'), onPress: () => router.push('/(tabs)/payout-info' as any) },
     ]),
   ];
 
@@ -254,6 +276,10 @@ export default function ProfileScreen() {
           <FontAwesome5 name="sign-out-alt" size={22} color={COLORS.danger} />
           <Text style={styles.logoutText}>{t('profile.logout')}</Text>
         </TouchableOpacity>
+        <TouchableOpacity style={styles.logoutAllBtn} onPress={handleLogoutAll}>
+          <FontAwesome5 name="mobile-alt" size={13} color={COLORS.textMuted} />
+          <Text style={styles.logoutAllText}>{t('profile.logoutAll')}</Text>
+        </TouchableOpacity>
 
         {/* Zone dangereuse : désactivation de compte en self-service */}
         <View style={styles.dangerZone}>
@@ -332,6 +358,8 @@ const styles = StyleSheet.create({
   navLabel:      { flex: 1, fontSize: 15, color: COLORS.dark },
   logoutBtn:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: COLORS.white, margin: 12, borderRadius: 14, padding: 16, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
   logoutText:    { color: COLORS.danger, fontSize: 16, fontWeight: '700' },
+  logoutAllBtn:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 10, marginTop: -4, marginBottom: 8 },
+  logoutAllText: { fontSize: 13, color: COLORS.textMuted, textDecorationLine: 'underline' },
   dangerZone:    { margin: 12, marginTop: 0, backgroundColor: '#FEF2F2', borderRadius: 14, borderWidth: 1, borderColor: '#FECACA', overflow: 'hidden' },
   dangerToggle:  { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 14 },
   dangerToggleText: { flex: 1, color: COLORS.danger, fontSize: 13, fontWeight: '700' },

@@ -4,6 +4,7 @@ import {
   TouchableOpacity, RefreshControl, Image, ScrollView,
   ActivityIndicator, KeyboardAvoidingView, Platform, Alert, Linking,
 } from 'react-native';
+import type { ScrollViewInstance } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -34,7 +35,7 @@ const EMPTY_INFO: PaymentInfo = { ...EMPTY_PAYMENT_INFO };
 
 function PromoBanners() {
   const { t } = useTranslation();
-  const scrollRef  = useRef<ScrollView>(null);
+  const scrollRef  = useRef<ScrollViewInstance>(null);
   const [activeIndex, setActiveIndex] = useState(0);
 
 

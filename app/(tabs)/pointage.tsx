@@ -6,6 +6,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { pointageApi } from '@/services/api';
+import { openReceipt } from '@/services/receipt';
 import { Pointage, Staff } from '@/types';
 import { COLORS } from '@/constants';
 import { useAuthStore } from '@/store/authStore';
@@ -218,6 +219,18 @@ function ReportView() {
   useEffect(() => { load(); }, [load]);
   const onRefresh = () => { setRefreshing(true); load(); };
 
+  const handleExport = async () => {
+    const filters = { from, to, ...(filterHotel ? { hotel_id: filterHotel } : {}) };
+    try {
+      await openReceipt(
+        () => pointageApi.exportToken(filters),
+        (token) => pointageApi.exportUrl(token),
+      );
+    } catch (e: any) {
+      Alert.alert(t('common.error'), e.response?.data?.message ?? t('receipt.error'));
+    }
+  };
+
   const hotelOptions = useMemo(() => {
     const map = new Map<number, string>();
     pointages.forEach(p => map.set(p.hotel_id, p.hotel_short_name || p.hotel_name || ''));
@@ -273,6 +286,12 @@ function ReportView() {
                 <Text style={styles.dateBtnText}>{fmtDate(to)}</Text>
               </TouchableOpacity>
             </View>
+
+            {/* Export Excel (CSV) de la période et de l'hôtel affichés, comme le bouton du web */}
+            <TouchableOpacity style={styles.exportBtn} onPress={handleExport}>
+              <FontAwesome5 name="file-excel" size={13} color={COLORS.success} />
+              <Text style={styles.exportBtnText}>{t('pointage.export')}</Text>
+            </TouchableOpacity>
 
             {hotelOptions.length > 1 && (
               <FlatList
@@ -390,6 +409,8 @@ const styles = StyleSheet.create({
   dateRow:     { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
   dateBtn:     { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: COLORS.white, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9, flex: 1, justifyContent: 'center' },
   dateBtnText: { fontSize: 13, color: COLORS.dark, fontWeight: '600' },
+  exportBtn:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 10, marginBottom: 12, borderRadius: 10, backgroundColor: '#ECFDF5', borderWidth: 1, borderColor: '#A7F3D0' },
+  exportBtnText: { fontSize: 13, fontWeight: '700', color: '#065F46' },
 
   chip:        { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.border },
   chipActive:  { backgroundColor: COLORS.primary, borderColor: COLORS.primary },

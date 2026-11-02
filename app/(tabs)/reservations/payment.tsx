@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Linking } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Linking, AppState } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { reservationApi } from '@/services/api';
@@ -7,27 +7,67 @@ import { Reservation } from '@/types';
 import { COLORS, PAYMENT_METHODS } from '@/constants';
 import PaymentMethodIcon from '@/components/PaymentMethodIcon';
 
+// Les dates arrivent en ISO complet (« 2026-11-02T00:00:00.000Z ») : on affiche JJ/MM/AAAA.
+function fmtDate(value?: string) {
+  if (!value) return '—';
+  const [y, m, d] = String(value).slice(0, 10).split('-');
+  return `${d}/${m}/${y}`;
+}
+
 export default function PaymentScreen() {
   const { t } = useTranslation();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  // `redirect` : page Jèko déjà ouverte par l'écran de réservation (pour pouvoir la rouvrir)
+  const { id, redirect } = useLocalSearchParams<{ id: string; redirect?: string }>();
   const [reservation, setReservation] = useState<Reservation | null>(null);
   const [payment,     setPayment]     = useState('');
   const [loading,     setLoading]     = useState(true);
   const [processing,  setProcessing]  = useState(false);
   const [checking,    setChecking]    = useState(false);
-  const [redirectUrl, setRedirectUrl] = useState<string | null>(null);
+  const [redirectUrl, setRedirectUrl] = useState<string | null>(redirect ?? null);
+  // Paiement refusé ou abandonné chez Jèko : comme la page de paiement du web, on affiche
+  // l'échec et on repropose les moyens de paiement.
+  const [failed,      setFailed]      = useState(false);
+
+  const confirmedRef = useRef(false);
 
   useEffect(() => {
     reservationApi.get(Number(id))
-      .then((res) => setReservation(res.data))
+      .then((res) => {
+        setReservation(res.data);
+        if (res.data?.paid) goConfirmed();
+        else if (res.data?.status === 'paiement_échoué' && !redirect) setFailed(true);
+      })
       .finally(() => setLoading(false));
   }, [id]);
 
+  // Un paiement Jèko déjà lancé (ex. depuis l'écran de réservation) : on reste en attente de
+  // confirmation au lieu de reproposer « Payer », pour éviter un double débit.
+  const pending = !failed && (!!redirectUrl || (!!reservation?.jeko_reference && !reservation?.paid));
+
+  // Comme le retour de paiement du web : une réservation payée mène à la page de confirmation.
   const goConfirmed = () => {
-    Alert.alert(t('common.success'), t('reservations.confirmed'), [
-      { text: t('common.ok'), onPress: () => router.replace('/(tabs)/reservations') },
-    ]);
+    if (confirmedRef.current) return;
+    confirmedRef.current = true;
+    router.replace({ pathname: '/(tabs)/reservations/success', params: { id } } as any);
   };
+
+  // Le serveur interroge Jèko directement et confirme la réservation si le paiement a abouti.
+  const verify = async () => {
+    const res = await reservationApi.verifyPayment(Number(id));
+    if (res.data?.paid) goConfirmed();
+    else if (res.data?.status === 'error') { setFailed(true); setRedirectUrl(null); }
+    return !!res.data?.paid;
+  };
+
+  // Vérification automatique : au retour dans l'app (après le navigateur Jèko) puis toutes les 5 s.
+  useEffect(() => {
+    if (!pending) return;
+    const check = () => { verify().catch(() => {}); };
+    check();
+    const timer = setInterval(check, 5000);
+    const sub = AppState.addEventListener('change', (state) => { if (state === 'active') check(); });
+    return () => { clearInterval(timer); sub.remove(); };
+  }, [pending, id]);
 
   const handlePay = async () => {
     if (!payment) {
@@ -35,6 +75,7 @@ export default function PaymentScreen() {
       return;
     }
     setProcessing(true);
+    setFailed(false);
     try {
       const res = await reservationApi.processPayment(Number(id), { payment_method: payment });
       if (res.data?.paid) {
@@ -52,17 +93,15 @@ export default function PaymentScreen() {
     }
   };
 
-  // La redirection n'est pas une preuve de paiement (le webhook confirme en arrière-plan) :
-  // on relit la réservation pour savoir si elle est désormais marquée payée.
+  // La redirection n'est pas une preuve de paiement : on fait vérifier le statut auprès de Jèko.
   const handleCheckStatus = async () => {
     setChecking(true);
     try {
-      const res = await reservationApi.get(Number(id));
-      if (res.data?.paid) {
-        goConfirmed();
-      } else {
+      if (!(await verify())) {
         Alert.alert(t('common.info'), t('reservations.paymentPending'));
       }
+    } catch (e: any) {
+      Alert.alert(t('common.error'), e.response?.data?.message ?? t('reservations.paymentFailed'));
     } finally {
       setChecking(false);
     }
@@ -87,21 +126,28 @@ export default function PaymentScreen() {
         <Text style={styles.code}>{reservation.code}</Text>
         <View style={styles.row}>
           <Text style={styles.label}>{t('reservations.hotel')}</Text>
-          <Text style={styles.value}>{(reservation.hotel as any)?.name ?? '—'}</Text>
+          {/* L'API renvoie la réservation à plat (hotel_name, room_number…), pas d'objets imbriqués */}
+          <Text style={styles.value}>{(reservation as any).hotel_name ?? '—'}</Text>
         </View>
         <View style={styles.row}>
           <Text style={styles.label}>{t('reservations.room')}</Text>
-          <Text style={styles.value}>{t('createRes.noLabel')}{(reservation.room as any)?.number ?? '—'} · {(reservation.room as any)?.type ?? ''}</Text>
+          <Text style={styles.value}>{t('createRes.noLabel')}{(reservation as any).room_number ?? reservation.room ?? '—'}{(reservation as any).room_type ? ` · ${(reservation as any).room_type}` : ''}</Text>
         </View>
         <View style={styles.row}>
           <Text style={styles.label}>{t('reservations.checkin')} / {t('reservations.checkout')}</Text>
-          <Text style={styles.value}>{reservation.checkin} → {reservation.checkout} ({reservation.nights} {reservation.nights > 1 ? t('common.nights') : t('common.night')})</Text>
+          <Text style={styles.value}>{fmtDate(reservation.checkin)} → {fmtDate(reservation.checkout)} ({reservation.nights} {reservation.nights > 1 ? t('common.nights') : t('common.night')})</Text>
         </View>
         <View style={[styles.row, { borderBottomWidth: 0 }]}>
           <Text style={[styles.label, { fontWeight: '700' }]}>{t('reservations.total')}</Text>
           <Text style={styles.total}>{reservation.total?.toLocaleString()} FCFA</Text>
         </View>
       </View>
+
+      {failed && (
+        <View style={styles.failedBox}>
+          <Text style={styles.failedText}>{t('reservations.paymentFailedRetry')}</Text>
+        </View>
+      )}
 
       {/* Modes de paiement */}
       <Text style={styles.sectionTitle}>{t('hotels.paymentMethod')}</Text>
@@ -123,7 +169,7 @@ export default function PaymentScreen() {
         </TouchableOpacity>
       ))}
 
-      {!redirectUrl && (
+      {!pending && (
         <TouchableOpacity
           style={[styles.payBtn, (!payment || processing) && { opacity: 0.6 }]}
           onPress={handlePay}
@@ -135,13 +181,15 @@ export default function PaymentScreen() {
         </TouchableOpacity>
       )}
 
-      {redirectUrl && (
+      {pending && (
         <View style={styles.pendingBox}>
           <Text style={styles.pendingText}>{t('reservations.paymentPending')}</Text>
 
-          <TouchableOpacity style={styles.secondaryBtn} onPress={() => Linking.openURL(redirectUrl)}>
-            <Text style={styles.secondaryBtnText}>{t('reservations.reopenPayment')}</Text>
-          </TouchableOpacity>
+          {redirectUrl && (
+            <TouchableOpacity style={styles.secondaryBtn} onPress={() => Linking.openURL(redirectUrl)}>
+              <Text style={styles.secondaryBtnText}>{t('reservations.reopenPayment')}</Text>
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity
             style={[styles.payBtn, checking && { opacity: 0.6 }]}
@@ -177,6 +225,8 @@ const styles = StyleSheet.create({
   check:               { width: 24, height: 24, borderRadius: 12, backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center' },
   payBtn:              { backgroundColor: COLORS.primary, borderRadius: 12, paddingVertical: 16, alignItems: 'center', marginTop: 8 },
   payBtnText:          { color: COLORS.white, fontSize: 17, fontWeight: '700' },
+  failedBox:           { backgroundColor: '#FEE2E2', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#FECACA', marginBottom: 12 },
+  failedText:          { color: COLORS.danger, fontSize: 14, fontWeight: '600' },
   pendingBox:          { backgroundColor: '#FFF7E6', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: '#FDE4A8', gap: 10 },
   pendingText:         { fontSize: 13, color: COLORS.dark, lineHeight: 19, marginBottom: 4 },
   secondaryBtn:        { borderRadius: 12, paddingVertical: 14, alignItems: 'center', borderWidth: 1.5, borderColor: COLORS.primary },

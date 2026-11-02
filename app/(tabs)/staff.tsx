@@ -4,6 +4,7 @@ import {
   RefreshControl, Modal, ScrollView, TextInput,
   KeyboardAvoidingView, Platform, ActivityIndicator, Switch,
 } from 'react-native';
+import { router } from 'expo-router';
 import { staffApi, hotelApi } from '@/services/api';
 import { Staff, Hotel } from '@/types';
 import { COLORS } from '@/constants';
@@ -275,6 +276,13 @@ export default function StaffScreen() {
         keyExtractor={(s) => String(s.id)}
         renderItem={renderItem}
         contentContainerStyle={{ padding: 12, paddingBottom: 100 }}
+        ListHeaderComponent={isManager ? (
+          <TouchableOpacity style={styles.scheduleBtn} onPress={() => router.push('/(tabs)/staff-schedule' as any)}>
+            <FontAwesome5 name="calendar-week" size={15} color={COLORS.primary} />
+            <Text style={styles.scheduleBtnText}>{t('staffSchedule.open')}</Text>
+            <FontAwesome5 name="chevron-right" size={12} color={COLORS.primary} />
+          </TouchableOpacity>
+        ) : undefined}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -600,6 +608,8 @@ const styles = StyleSheet.create({
   statusDot:            { width: 10, height: 10, borderRadius: 5 },
   empty:                { alignItems: 'center', paddingTop: 60, gap: 12 },
   emptyText:            { fontSize: 16, color: COLORS.textMuted },
+  scheduleBtn:          { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: COLORS.white, borderRadius: 12, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: COLORS.primary + '33' },
+  scheduleBtnText:      { flex: 1, fontSize: 14, fontWeight: '700', color: COLORS.primary },
   fab:                  { position: 'absolute', bottom: 20, right: 20, backgroundColor: COLORS.primary, width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 8, elevation: 8 },
   overlay:              { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   sheet:                { backgroundColor: COLORS.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, maxHeight: '92%' },

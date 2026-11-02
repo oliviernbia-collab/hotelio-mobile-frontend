@@ -288,7 +288,26 @@ const en = {
     cat_auberge:        'Hostel',
   },
 
+  resSuccess: {
+    screenTitle: "Confirmation",
+    title: "Reservation confirmed!",
+    subtitle: "Your stay at {{hotel}} is confirmed.",
+    emailNote: "A confirmation email with your PDF invoice has been sent to you.",
+    code: "Reservation code",
+    details: "Your stay details",
+    checkinHour: "Check-in from 2:00 PM",
+    checkoutHour: "Check-out before 12:00 PM",
+    amountPaid: "Amount paid",
+    method: "Method",
+    location: "Hotel location",
+    openMaps: "Open in Maps",
+    downloadReceipt: "Download receipt",
+    myReservations: "My reservations",
+    exploreHotels: "Explore other hotels",
+  },
+
   reservations: {
+    paymentFailedRetry: "The payment failed or was cancelled. Choose a payment method to try again.",
     title:        'My reservations',
     new:          'New reservation',
     noReservations:'No reservations',
@@ -311,6 +330,9 @@ const en = {
     status_confirmee:  'Confirmed',
     status_occupee:    'Occupied',
     status_finalisee:  'Completed',
+    status_arrivee:    'Checked in',
+    status_departie:   'Checked out',
+    status_paiement_echoue: 'Payment failed',
     status_annulee:    'Cancelled',
     tomorrow:          'Tomorrow',
     paymentFailed:     'Payment failed.',
@@ -321,6 +343,8 @@ const en = {
   },
 
   profile: {
+    logoutAll: "Log out of all devices",
+    logoutAllConfirm: "All your sessions will be closed, including this one (useful if a phone is lost or stolen).",
     personalInfo:     'Personal information',
     name:             'Name',
     email:            'Email',
@@ -381,7 +405,24 @@ const en = {
     lang_es:   'Español',
   },
 
+  adminOrders: {
+    totalSales: "Total sales",
+    count: "Orders",
+    paid: "Paid",
+    items: "item(s)",
+    empty: "No orders",
+    status_paid: "Paid",
+    status_pending: "Awaiting payment",
+    status_cancelled: "Cancelled",
+    filter_all: "All",
+    filter_paid: "Paid",
+    filter_pending: "Pending",
+    filter_cancelled: "Cancelled",
+  },
+
   admin: {
+    orders: "Shop orders",
+    ordersDesc: "All shop orders and total sales",
     title:        'Admin Panel',
     users:        'User management',
     usersDesc:    'Create, edit, activate or delete accounts',
@@ -401,6 +442,12 @@ const en = {
   },
 
   payoutsAdmin: {
+    failedTitle: "Failed transfers",
+    failedHint: "The automatic Jèko transfer failed — check the owner's payout details or the store balance, then retry. An automatic retry is also attempted every 30 minutes.",
+    retry: "Retry",
+    retried: "Transfer retried.",
+    sourceReservation: "Reservation",
+    sourcePurchase: "Purchase",
     screenTitle:    'Owner payouts',
     owed:           'Owed',
     alreadyPaid:    'Already paid',
@@ -445,9 +492,32 @@ const en = {
     chooseDesc: 'Select the subscription that fits your establishment.',
   },
 
+  orderSuccess: {
+    screenTitle: "Order",
+    title: "Payment successful!",
+    subtitle: "Thank you for your purchase. Your receipt is available below.",
+    pendingTitle: "Payment being confirmed",
+    pendingSub: "Complete the payment on your operator's page: this page updates automatically.",
+    cancelledTitle: "Order cancelled",
+    order: "Order",
+    date: "Date",
+    method: "Payment method",
+    reference: "Transaction ref.",
+    items: "Items ordered",
+    amountPaid: "Amount paid",
+    myOrders: "My orders",
+    backToShop: "Back to the shop",
+  },
+
+  receipt: {
+    download: 'PDF receipt',
+    error:    'Unable to open the receipt. Please try again in a moment.',
+  },
+
   payoutInfo: {
     screenTitle:      'Payout information',
     hint:             'Mobile money number or bank account to automatically receive your share (total minus commission) after each reservation paid online.',
+    hintClient:       'Mobile money number or bank account where you will receive refunds if you cancel a reservation or order paid online.',
     currentMethod:    'Current method',
     methodLabel:      'Method',
     bankAccount:      'Bank account',
@@ -505,6 +575,13 @@ const en = {
   },
 
   reviews: {
+    yourReview: "Your review",
+    update: "Update my review",
+    deleteTitle: "Delete my review",
+    deleteConfirm: "Your review of this hotel will be permanently deleted.",
+    status_pending: "Awaiting approval",
+    status_approved: "Published",
+    status_rejected: "Rejected",
     writeTitle:        'Leave a review',
     ratingLabel:       'Rating',
     titleLabel:        'Title (optional)',
@@ -623,6 +700,9 @@ const en = {
   },
 
   notifications: {
+    deleteAll: "Delete all",
+    deleteAllTitle: "Delete all notifications",
+    deleteAllMsg: "All your notifications will be permanently deleted.",
     title:       'Notifications',
     empty:       'No notifications',
     emptyFilter: 'No notifications for this filter',
@@ -669,7 +749,23 @@ const en = {
   },
 
   // ── Time clock ──────────────────────────────────────────────────
+  staffSchedule: {
+    screenTitle: "Staff schedule",
+    open: "Weekly schedule",
+    tapToday: "Tap to go back to this week",
+    daysShort: ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],
+    shift_matin: "Morning",
+    shift_apres_midi: "Afternoon",
+    shift_nuit: "Night",
+    shift_repos: "Day off",
+    start: "Start",
+    end: "End",
+    poste: "Position",
+    postePlaceholder: "E.g. Front desk, Restaurant…",
+  },
+
   pointage: {
+    export: "Export (Excel)",
     loadError:     'Unable to load the time clock.',
     actionError:   'Unable to save the clock action.',
     noStaffRecord: 'No staff record is linked to your account.',
@@ -1076,6 +1172,14 @@ const en = {
   },
 
   createRes: {
+    datesStepLabel: "Dates",
+    paymentStepLabel: "Payment",
+    datesTitle: "Your stay dates",
+    freeRoomsCount: "{{count}} room(s) free on these dates",
+    hoursHint: "Check-in from 2:00 PM · Check-out before 12:00 PM",
+    fullForDates: "Full on these dates",
+    takenForDates: "Unavailable on these dates",
+    nationality: "Nationality",
     typeStepLabel:   'Type',
     startingFrom:    'from',
     priceOnRequest:  'Price on request',
@@ -1153,6 +1257,7 @@ const en = {
   myOrders: {
     status_confirmee: 'Confirmed',
     status_en_cours:  'In progress',
+    status_paye:      'Paid',
     status_livree:    'Delivered',
     cancelOrderTitle: 'Cancel order',
     cancelOrderMsg:   'Do you want to cancel order #{{id}}?\n\nTotal: {{total}} {{fcfa}}\n\nItems will be returned to stock.',

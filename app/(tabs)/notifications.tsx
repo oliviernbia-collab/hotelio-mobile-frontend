@@ -1,9 +1,10 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useCallback, useState, useMemo } from 'react';
 import {
   View, Text, FlatList, StyleSheet, TouchableOpacity,
-  RefreshControl, ScrollView,
+  RefreshControl, ScrollView, Alert,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { useFocusEffect } from 'expo-router';
 import { notificationApi } from '@/services/api';
 import { Notification } from '@/types';
 import { COLORS } from '@/constants';
@@ -102,7 +103,9 @@ export default function NotificationsScreen() {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  // Rechargé à chaque affichage de l'écran : les onglets restent montés, un simple
+  // chargement initial ne montrerait jamais les notifications arrivées entre-temps.
+  useFocusEffect(useCallback(() => { load(); }, []));
 
   const markRead = async (id: string) => {
     try { await notificationApi.markRead(id); load(); } catch {}
@@ -114,6 +117,20 @@ export default function NotificationsScreen() {
 
   const deleteNotif = async (id: string) => {
     try { await notificationApi.delete(id); load(); } catch {}
+  };
+
+  // Comme « Tout supprimer » du web, avec confirmation (action irréversible)
+  const deleteAll = () => {
+    Alert.alert(t('notifications.deleteAllTitle'), t('notifications.deleteAllMsg'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('common.delete'),
+        style: 'destructive',
+        onPress: async () => {
+          try { await notificationApi.deleteAll(); load(); } catch {}
+        },
+      },
+    ]);
   };
 
   /* ── Filtrage local ─────────────────────────────────────────────────── */
@@ -158,8 +175,8 @@ export default function NotificationsScreen() {
           <Text style={[styles.notifTitle, isUnread && { color: COLORS.dark }]} numberOfLines={2}>
             {item.data?.title ?? t('notifications.fallbackTitle')}
           </Text>
-          {item.data?.body ? (
-            <Text style={styles.notifBody} numberOfLines={3}>{item.data.body}</Text>
+          {(item.data?.message ?? item.data?.body) ? (
+            <Text style={styles.notifBody} numberOfLines={3}>{item.data.message ?? item.data.body}</Text>
           ) : null}
           <View style={styles.metaRow}>
             <Text style={styles.notifTime}>{formatDate(item.created_at, t)}</Text>
@@ -230,6 +247,7 @@ export default function NotificationsScreen() {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
+        style={styles.dateBar}
         contentContainerStyle={styles.dateBarContent}
       >
         {DATE_TABS.map(tab => {
@@ -249,11 +267,19 @@ export default function NotificationsScreen() {
       </ScrollView>
 
       {/* ── Barre "Tout marquer lu" ──────────────────────────────────────── */}
-      {unread > 0 && (
-        <TouchableOpacity style={styles.markAllBtn} onPress={markAllRead}>
-          <FontAwesome5 name="check-double" size={13} color={COLORS.primary} />
-          <Text style={styles.markAllText}>{t('notifications.markAll')} ({unread})</Text>
-        </TouchableOpacity>
+      {notifications.length > 0 && (
+        <View style={styles.actionsBar}>
+          {unread > 0 && (
+            <TouchableOpacity style={styles.actionHalf} onPress={markAllRead}>
+              <FontAwesome5 name="check-double" size={13} color={COLORS.primary} />
+              <Text style={styles.markAllText}>{t('notifications.markAll')} ({unread})</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity style={styles.actionHalf} onPress={deleteAll}>
+            <FontAwesome5 name="trash-alt" size={13} color={COLORS.danger} />
+            <Text style={[styles.markAllText, { color: COLORS.danger }]}>{t('notifications.deleteAll')}</Text>
+          </TouchableOpacity>
+        </View>
       )}
 
       {/* ── Résumé filtre actif ──────────────────────────────────────────── */}
@@ -326,6 +352,9 @@ const styles = StyleSheet.create({
   typeCountText:  { fontSize: 10, fontWeight: '700', color: COLORS.textMuted },
 
   /* Filtres date */
+  // Sans flexGrow: 0, un ScrollView s'étire (flexGrow: 1 par défaut) et dispute la hauteur
+  // de l'écran à la liste, qui se retrouve écrasée en bas.
+  dateBar:        { flexGrow: 0, flexShrink: 0 },
   dateBarContent: { paddingHorizontal: 12, paddingVertical: 8, gap: 8 },
   datePill:       { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.border },
   datePillActive: { backgroundColor: COLORS.primary + '15', borderColor: COLORS.primary },
@@ -333,7 +362,8 @@ const styles = StyleSheet.create({
   datePillTextActive: { color: COLORS.primary, fontWeight: '700' },
 
   /* Barre "Tout marquer lu" */
-  markAllBtn:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: COLORS.primary + '11', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  actionsBar:  { flexDirection: 'row', backgroundColor: COLORS.primary + '11', borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  actionHalf:  { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 10 },
   markAllText: { color: COLORS.primary, fontSize: 13, fontWeight: '600' },
 
   /* Résumé filtre */

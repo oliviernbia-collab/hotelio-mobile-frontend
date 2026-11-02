@@ -3,9 +3,11 @@ import {
   View, Text, FlatList, ScrollView, StyleSheet,
   TouchableOpacity, Alert, RefreshControl,
 } from 'react-native';
+import type { ScrollViewInstance } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { reservationApi } from '@/services/api';
+import { openReceipt } from '@/services/receipt';
 import { Reservation } from '@/types';
 import { COLORS, RESERVATION_STATUS_COLORS } from '@/constants';
 import { FontAwesome5 } from '@expo/vector-icons';
@@ -27,19 +29,23 @@ const PROMO_BANNERS = [
   { id: 4, titleKey: 'resList.promo_loyalty_title',   descKey: 'resList.promo_loyalty_desc',   icon: 'gift',    bg: '#9D174D', accent: '#FCA5A5' },
 ];
 
-const STATUS_TABS = ['tous', 'en_attente', 'confirmée', 'terminée', 'annulée'];
+// Mêmes statuts que le web : 'arrivée' au check-in, 'départie' au check-out
+const STATUS_TABS = ['tous', 'en_attente', 'confirmée', 'arrivée', 'départie', 'annulée'];
 
 const RES_STATUS_KEYS: Record<string, string> = {
   en_attente: 'reservations.status_en_attente',
   confirmée:  'reservations.status_confirmee',
+  arrivée:    'reservations.status_arrivee',
+  départie:   'reservations.status_departie',
   occupée:    'reservations.status_occupee',
   terminée:   'reservations.status_finalisee',
   annulée:    'reservations.status_annulee',
+  paiement_échoué: 'reservations.status_paiement_echoue',
 };
 
 function PromoBanners() {
   const { t } = useTranslation();
-  const scrollRef   = useRef<ScrollView>(null);
+  const scrollRef   = useRef<ScrollViewInstance>(null);
   const [activeIdx, setActiveIdx] = useState(0);
 
   useEffect(() => {
@@ -174,6 +180,17 @@ export default function ReservationsScreen() {
     );
   };
 
+  const handleReceipt = async (item: Reservation) => {
+    try {
+      await openReceipt(
+        () => reservationApi.receiptToken(item.id),
+        (token) => reservationApi.receiptUrl(item.id, token),
+      );
+    } catch (e: any) {
+      Alert.alert(t('common.error'), e.response?.data?.message ?? t('receipt.error'));
+    }
+  };
+
   const renderItem = ({ item }: { item: Reservation }) => {
     const statusColor = RESERVATION_STATUS_COLORS[item.status] ?? COLORS.gray;
 
@@ -212,7 +229,8 @@ export default function ReservationsScreen() {
               <Text style={styles.actionBtnText}>{t('resList.checkIn')}</Text>
             </TouchableOpacity>
           )}
-          {user?.role !== 'client' && item.status === 'confirmée' && item.checkin_at && !item.checkout_at && (
+          {/* Après le check-in, le statut passe à 'arrivée' (comme le web) : on se fie aux dates */}
+          {user?.role !== 'client' && item.status !== 'annulée' && item.checkin_at && !item.checkout_at && (
             <TouchableOpacity style={[styles.actionBtn, { backgroundColor: COLORS.warning }]} onPress={() => handleCheckOut(item.id)}>
               <Text style={styles.actionBtnText}>{t('resList.checkOut')}</Text>
             </TouchableOpacity>
@@ -223,6 +241,15 @@ export default function ReservationsScreen() {
               onPress={() => router.push({ pathname: '/(tabs)/reservations/payment', params: { id: item.id } })}
             >
               <Text style={styles.actionBtnText}>{t('reservations.paymentMethod')}</Text>
+            </TouchableOpacity>
+          ) : null}
+          {!!item.paid && item.status !== 'annulée' ? (
+            <TouchableOpacity
+              style={[styles.actionBtn, styles.receiptBtn]}
+              onPress={() => handleReceipt(item)}
+            >
+              <FontAwesome5 name="file-pdf" size={12} color={COLORS.primary} />
+              <Text style={[styles.actionBtnText, { color: COLORS.primary }]}>{t('receipt.download')}</Text>
             </TouchableOpacity>
           ) : null}
           {user?.role === 'client' && (item.status === 'en_attente' || item.status === 'confirmée') && !item.checkin_at ? (
@@ -348,6 +375,7 @@ const styles = StyleSheet.create({
   total:          { fontSize: 16, fontWeight: '700', color: COLORS.dark },
   actionBtn:      { backgroundColor: COLORS.primary, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
   actionBtnText:  { color: COLORS.white, fontSize: 12, fontWeight: '700' },
+  receiptBtn:     { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: COLORS.primary + '15' },
 
   /* Vide */
   empty:          { alignItems: 'center', paddingTop: 60, gap: 12 },

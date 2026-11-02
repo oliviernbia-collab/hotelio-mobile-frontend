@@ -11,11 +11,12 @@ import { useTranslation } from 'react-i18next';
 
 // ─── Paliers de fidélité ──────────────────────────────────────────────────────
 
+// Mêmes seuils que le web (client/index et clients/index) : Argent 500, Or 2 000, Platine 5 000
 export const LOYALTY_TIERS = [
   { name: 'Bronze',   min: 0,    max: 499,   color: '#CD7F32', bg: '#FDF2E9', icon: '🥉', perk: '5% de réduction' },
-  { name: 'Silver',   min: 500,  max: 999,   color: '#94A3B8', bg: '#F1F5F9', icon: '🥈', perk: '10% de réduction + cadeau de bienvenue' },
-  { name: 'Gold',     min: 1000, max: 2499,  color: '#F59E0B', bg: '#FFFBEB', icon: '🥇', perk: '15% de réduction + 1 nuit offerte / 5 séjours' },
-  { name: 'Platinum', min: 2500, max: Infinity, color: '#6366F1', bg: '#EEF2FF', icon: '💎', perk: '20% de réduction + accès VIP + 1 nuit / 3 séjours' },
+  { name: 'Silver',   min: 500,  max: 1999,  color: '#94A3B8', bg: '#F1F5F9', icon: '🥈', perk: '10% de réduction + cadeau de bienvenue' },
+  { name: 'Gold',     min: 2000, max: 4999,  color: '#F59E0B', bg: '#FFFBEB', icon: '🥇', perk: '15% de réduction + 1 nuit offerte / 5 séjours' },
+  { name: 'Platinum', min: 5000, max: Infinity, color: '#6366F1', bg: '#EEF2FF', icon: '💎', perk: '20% de réduction + accès VIP + 1 nuit / 3 séjours' },
 ];
 
 export function getTier(pts: number) {
