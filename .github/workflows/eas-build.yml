@@ -1,0 +1,56 @@
+# Build continu de l'application Android avec EAS (Expo Application Services).
+# À chaque push sur main (hors documentation) : build du profil « apk » (APK installable,
+# branché sur l'API en ligne). Le build tourne sur les serveurs d'Expo ; ce workflow le lance
+# sans attendre la fin (--no-wait) et affiche le lien de suivi.
+# Lancement manuel possible (onglet Actions → Run workflow) en choisissant le profil.
+#
+# Secret du dépôt (Settings → Secrets and variables → Actions) :
+#   EXPO_TOKEN  jeton d'accès Expo (expo.dev → Account settings → Access tokens)
+#
+# Attention : l'offre gratuite d'Expo limite le nombre de builds par mois.
+name: Build Android (EAS)
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: 'Profil EAS'
+        type: choice
+        options: [apk, preview, production]
+        default: apk
+
+concurrency:
+  group: eas-build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Dépendances
+        run: npm ci
+
+      - name: Vérification Expo (non bloquante)
+        run: npx expo-doctor || echo "expo-doctor a signalé des avertissements (non bloquant)"
+
+      - name: Lancement du build Android
+        run: eas build --platform android --profile "${{ inputs.profile || 'apk' }}" --non-interactive --no-wait
